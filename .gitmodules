@@ -1,3 +1,6 @@
 [submodule "deps/RTKLIB"]
 	path = deps/RTKLIB
 	url = https://github.com/tomojitakasu/RTKLIB
+[submodule "deps/serial"]
+	path = deps/serial
+	url = https://github.com/cottsay/serial.git
