@@ -1,3 +1,4 @@
+#include <unistd.h>
 
 #include <iostream>
 #include <filesystem>
@@ -15,7 +16,10 @@ int main() {
   }
   unsigned long baud = 9600;
 
+  // open serial connection and clear anything in buffer
   serial::Serial port0(port0_path, baud, serial::Timeout::simpleTimeout(1000));
+  usleep(50000);
+  port0.flushInput();
 
   unsigned char byte_in;
 
