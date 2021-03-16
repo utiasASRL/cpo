@@ -11,7 +11,7 @@ namespace fs = std::filesystem;
 int main() {
 
   // set up RTKLIB logging
-  int trace_level = 5;
+  int trace_level = 3;
   fs::path trace_path{"/home/ben/Desktop/debug.trace"}; // todo: better location for this (may not want in final)
   if (trace_level > 0) {
     traceopen(trace_path.c_str());
@@ -44,7 +44,7 @@ int main() {
 
     input_rtcm3(&rtcm, byte_in);
 
-    if (total_bytes_read > 100) break;      // temporary
+    if (total_bytes_read > 4000 * 1024) break;      // temporary
   }
 
   return 0;
