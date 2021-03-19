@@ -17,8 +17,8 @@ add_library(rtklib ${RTK_LIB_DIRECTORY}/src/rtkcmn.c
         ${RTK_LIB_DIRECTORY}/src/rtcm3e.c
         )
 
-add_executable(cpo src/main.cpp)
-target_include_directories(cpo PUBLIC ${RTK_LIB_DIRECTORY}/src)
+add_executable(cpo src/main.cpp src/CpoFrontEnd.cpp)
+target_include_directories(cpo PUBLIC ${RTK_LIB_DIRECTORY}/src include)
 target_link_libraries(cpo serial rtklib)
 
 add_executable(replay_RTCM src/replay_rtcm.cpp)
