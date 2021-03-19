@@ -2,17 +2,15 @@
 
 #include <CpoFrontEnd.hpp>
 
+CpoFrontEnd::CpoFrontEnd(const std::string &port_path, unsigned long baud)
+    : serial_port(port_path, baud, serial::Timeout::simpleTimeout(1000)) {
 
-CpoFrontEnd::CpoFrontEnd(const std::string& port_path, unsigned long baud) {
-
-  if (!fs::exists(port_path)) {          // todo: should this warn and keep trying to connect instead?
-    throw std::runtime_error("Serial connection not found. Check that USB is plugged in.");
-  }
-
-  // open serial connection and clear anything in buffer
-  serial::Serial port0(port_path, baud, serial::Timeout::simpleTimeout(1000));
+  // clear anything in serial buffer
   usleep(50000);
-  port0.flushInput();
+  serial_port.flushInput();
 
   init_rtcm(&rtcm);
+
+  prev_sats = std::make_shared<std::unordered_map<uint8_t, SatelliteObs>>();
+  curr_sats = std::make_shared<std::unordered_map<uint8_t, SatelliteObs>>();
 }
