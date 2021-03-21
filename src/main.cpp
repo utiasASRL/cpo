@@ -35,6 +35,7 @@ int main() {
 
     status = input_rtcm3(&(node.rtcm), byte_in);
 
+    // phase observation received
     if (status == 1) {
       for (unsigned i = 0; i < node.rtcm.obs.n; ++i) {
         obsd_t &obs = node.rtcm.obs.data[i];
@@ -50,6 +51,15 @@ int main() {
       }
 
       std::cout << "Found " << node.curr_sats->size() << " satellites!" << std::endl; // debugging - count includes sbas
+    }
+
+    // ephemeris message received. Keep track of which satellites have ephemeris
+    if (status == 2) {
+      const auto & current_eph_sat = node.rtcm.ephsat;
+      if (!node.eph_set_gps[current_eph_sat]) {
+        node.eph_count_gps++;
+      }
+      node.eph_set_gps[current_eph_sat] = true;
     }
 
     if (total_bytes_read > 4000 * 1024) break;      // temporary so doesn't complain about endless loops

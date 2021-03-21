@@ -37,6 +37,12 @@ class CpoFrontEnd {
   /** \brief The set of observations at the current timestamp */
   std::shared_ptr<std::unordered_map<uint8_t, SatelliteObs>> curr_sats;
 
+  /** \brief Keep track of which GPS satellites we have ephemeris info for */
+  bool eph_set_gps[NSATGPS] = { false };
+
+  /** \brief Number of  GPS satellites we have ephemeris info for */
+  uint eph_count_gps = 0;
+
  private:
 
   /** \brief The last single-point positioning (pseudorange) estimate */
