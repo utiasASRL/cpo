@@ -15,6 +15,11 @@ add_library(rtklib ${RTK_LIB_DIRECTORY}/src/rtkcmn.c
         ${RTK_LIB_DIRECTORY}/src/rtcm2.c
         ${RTK_LIB_DIRECTORY}/src/rtcm3.c
         ${RTK_LIB_DIRECTORY}/src/rtcm3e.c
+        ${RTK_LIB_DIRECTORY}/src/pntpos.c
+        ${RTK_LIB_DIRECTORY}/src/ephemeris.c
+        ${RTK_LIB_DIRECTORY}/src/sbas.c
+        ${RTK_LIB_DIRECTORY}/src/ionex.c
+        ${RTK_LIB_DIRECTORY}/src/preceph.c
         )
 
 add_executable(cpo src/main.cpp src/CpoFrontEnd.cpp src/SatelliteObs.cpp)

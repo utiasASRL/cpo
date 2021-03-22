@@ -25,11 +25,16 @@ class CpoFrontEnd {
 
 //  void updateSats();
 
+  void setOrigin(double *rr);    // todo check this works and give more verbose name
+
   /** \brief The serial port that listens for GNSS measurements */
   serial::Serial serial_port;
 
   /** \brief RTKLIB struct that stores observations, ephemerides */
   rtcm_t rtcm;
+
+  /** \brief RTKLIB struct that sets parameters for single-point positioning */
+  prcopt_t code_positioning_options;
 
   /** \brief The set of observations at the last timestamp */
   std::shared_ptr<std::unordered_map<uint8_t, SatelliteObs>> prev_sats;
@@ -38,10 +43,13 @@ class CpoFrontEnd {
   std::shared_ptr<std::unordered_map<uint8_t, SatelliteObs>> curr_sats;
 
   /** \brief Keep track of which GPS satellites we have ephemeris info for */
-  bool eph_set_gps[NSATGPS] = { false };
+//  bool eph_set_gps[NSATGPS] = { false };
+  bool eph_set_gps[64] = {false};       // todo: figure out weird memory things happening to eph_count_gps
 
   /** \brief Number of  GPS satellites we have ephemeris info for */
   uint eph_count_gps = 0;
+
+  bool enu_origin_set = false;
 
  private:
 

@@ -13,7 +13,7 @@ int main() {
   }
 
   // serial port parameters
-  std::string port0_path = "/dev/ttyUSB0";
+  std::string port0_path = "/dev/ttyUSB0";    // todo: easier option besides serial for faster development
   unsigned long baud = 9600;
 
   if (!fs::exists(port0_path)) {          // todo: should this warn and keep trying to connect instead?
@@ -50,13 +50,56 @@ int main() {
         }
       }
 
-      std::cout << "Found " << node.curr_sats->size() << " satellites!" << std::endl; // debugging - count includes sbas
+      std::cout << node.eph_count_gps << "   Found " << node.curr_sats->size() << " satellites!   " ; // debugging
+      for (const auto & sat : *node.curr_sats) std::cout << (int)sat.first << ", ";
+      std::cout << std::endl;
+
+      if (node.eph_count_gps >= 5) {      // todo: may not need this if we're checking pntpos() return value
+        std::cout << "TODO: pntpos() " << node.eph_count_gps << std::endl;
+
+//        // get approximate start position through single-point (pseudo-range) positioning
+//        // rtcm_t wavelengths need to be filled in to get solution so we do manually
+//        for (int i = 0; i < 32; ++i) {
+//          rtcm.nav.lam[i][0] = CLIGHT / FREQ1;    // not sure if this stuff actually needed
+//          rtcm.nav.lam[i][1] = CLIGHT / FREQ2;
+//        }
+
+//        // pntpos() requires obsds to be sequential in memory
+//        std::vector<obsd_t> curr_obs;
+//        for (const auto & sat : *node.curr_sats) {
+//          curr_obs.push_back(sat.second.observation);
+//        }
+
+        sol_t init_solution;
+        char error_msg[128];
+        bool success = pntpos(node.rtcm.obs.data,     // todo - debug
+               node.rtcm.obs.n,
+               &node.rtcm.nav,
+               &node.code_positioning_options,
+               &init_solution,
+               nullptr,
+               nullptr,
+               error_msg);
+
+        for (const auto & ch : error_msg) std::cout << (char) ch;
+        std::cout << std::endl;
+
+        if (success && !node.enu_origin_set) {
+          node.setOrigin(&init_solution.rr[0]);
+        }
+
+
+
+      }
+
     }
 
     // ephemeris message received. Keep track of which satellites have ephemeris
     if (status == 2) {
       const auto & current_eph_sat = node.rtcm.ephsat;
-      if (!node.eph_set_gps[current_eph_sat]) {
+      if (!node.eph_set_gps[current_eph_sat - MINPRNGPS]) {
+        std::cout << "Eph set for  " << current_eph_sat << std::endl;   // debug
+
         node.eph_count_gps++;
       }
       node.eph_set_gps[current_eph_sat] = true;
