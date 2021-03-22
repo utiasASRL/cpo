@@ -18,7 +18,7 @@ int main() {
     throw std::invalid_argument("File path not found");
   }
 
-  int bytes_per_second = 200;     // how fast to publish
+  int bytes_per_second = 1000;     // how fast to publish
 
   // configure serial port
   unsigned long baud = 9600;
