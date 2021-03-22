@@ -83,7 +83,7 @@ int main() {
 
         sol_t init_solution;
         char error_msg[128];
-        bool success = pntpos(node.rtcm.obs.data,     // todo - debug
+        bool success = pntpos(node.rtcm.obs.data,
                               node.rtcm.obs.n,
                               &node.rtcm.nav,
                               &node.code_positioning_options,
@@ -98,9 +98,7 @@ int main() {
         if (success && !node.enu_origin_set) {
           node.setOrigin(&init_solution.rr[0]);
         }
-
       }
-
     }
 
     // ephemeris message received. Keep track of which satellites have ephemeris

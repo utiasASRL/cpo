@@ -53,6 +53,7 @@ class CpoFrontEnd {
   /** \brief Number of  GPS satellites we have ephemeris info for */
   uint eph_count_gps = 0;
 
+  /** \brief Track whether we've calculated a code solution yet */
   bool enu_origin_set = false;
 
  private:
