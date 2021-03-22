@@ -27,7 +27,13 @@ class CpoFrontEnd {
 
 //  void updateSats();
 
-  void setOrigin(double *rr);    // todo check this works and give more verbose name
+  /** \brief Set ECEF coordinates of our local ENU frame
+   * Should usually only be called once
+   * */
+  void setEnuOrigin(double *rr);
+
+  /** \brief Update the latest code solution we calculated */
+  void update_last_pos(double *rr);
 
 #if !FROM_FILE
   /** \brief The serial port that listens for GNSS measurements */
@@ -59,6 +65,7 @@ class CpoFrontEnd {
  private:
 
   /** \brief The last single-point positioning (pseudorange) estimate */
+  // todo - what frame do we want this? will use ENU (g) for now
   Eigen::Vector3d latest_code_solution_;
 
   /** \brief Position of the local East-North-Up frame origin in ECEF coordinates */

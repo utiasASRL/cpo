@@ -66,21 +66,8 @@ int main() {
       std::cout << std::endl;
 
       if (node.eph_count_gps >= 5) {      // todo: may not need this if we're checking pntpos() return value
-        std::cout << "TODO: pntpos() " << node.eph_count_gps << std::endl;
 
-//        // get approximate start position through single-point (pseudo-range) positioning
-//        // rtcm_t wavelengths need to be filled in to get solution so we do manually
-//        for (int i = 0; i < 32; ++i) {
-//          rtcm.nav.lam[i][0] = CLIGHT / FREQ1;    // not sure if this stuff actually needed
-//          rtcm.nav.lam[i][1] = CLIGHT / FREQ2;
-//        }
-
-//        // pntpos() requires obsds to be sequential in memory
-//        std::vector<obsd_t> curr_obs;
-//        for (const auto & sat : *node.curr_sats) {
-//          curr_obs.push_back(sat.second.observation);
-//        }
-
+        // get approximate start position through single-point (pseudo-range) positioning
         sol_t init_solution;
         char error_msg[128];
         bool success = pntpos(node.rtcm.obs.data,
@@ -92,11 +79,16 @@ int main() {
                               nullptr,
                               error_msg);
 
-        for (const auto &ch : error_msg) std::cout << (char) ch;
-        std::cout << std::endl;
+        if (success) {
+          // define the ENU origin if this is the first solution calculated
+          if (!node.enu_origin_set) {
+            node.setEnuOrigin(&init_solution.rr[0]);
+          }
 
-        if (success && !node.enu_origin_set) {
-          node.setOrigin(&init_solution.rr[0]);
+          // todo - the meat
+
+
+          node.update_last_pos(&init_solution.rr[0]);
         }
       }
     }

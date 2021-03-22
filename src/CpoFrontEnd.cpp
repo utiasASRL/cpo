@@ -6,9 +6,9 @@
 
 CpoFrontEnd::CpoFrontEnd(const std::string &port_path, unsigned long baud)
 #if !FROM_FILE
-    : serial_port(port_path, baud, serial::Timeout::simpleTimeout(1000))
+: serial_port(port_path, baud, serial::Timeout::simpleTimeout(1000))
 #endif
-  {
+{
 
   // clear anything in serial buffer
   usleep(50000);
@@ -31,7 +31,7 @@ CpoFrontEnd::CpoFrontEnd(const std::string &port_path, unsigned long baud)
   prev_sats = std::make_shared<std::unordered_map<uint8_t, SatelliteObs>>();
   curr_sats = std::make_shared<std::unordered_map<uint8_t, SatelliteObs>>();
 }
-void CpoFrontEnd::setOrigin(double *rr) {
+void CpoFrontEnd::setEnuOrigin(double *rr) {
 
   Eigen::Vector3d rr_vec(rr[0], rr[1], rr[2]);
   enu_origin_ = rr_vec;
@@ -49,4 +49,10 @@ void CpoFrontEnd::setOrigin(double *rr) {
 
   std::cout << "ENU origin set to " << geo_init[0] * R2D << " deg lat, " << geo_init[1] * R2D << " deg lat, "
             << geo_init[2] << " m alt." << std::endl;
+}
+
+void CpoFrontEnd::update_last_pos(double *rr) {
+  Eigen::Vector3d r_vc_inc(rr[0], rr[1], rr[2]);
+  latest_code_solution_ = C_enu_ecef_ * (r_vc_inc - enu_origin_);
+//  std::cout << "latest_code_solution_ " << latest_code_solution_.transpose() << std::endl;    // DEBUG
 }
