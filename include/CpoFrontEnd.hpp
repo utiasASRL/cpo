@@ -8,6 +8,8 @@
 
 #include <SatelliteObs.hpp>
 
+#define FROM_FILE 1         // reads data from binary file rather than over serial port
+
 namespace fs = std::filesystem;
 
 /** \brief Class to read and process raw GNSS measurements.
@@ -27,8 +29,10 @@ class CpoFrontEnd {
 
   void setOrigin(double *rr);    // todo check this works and give more verbose name
 
+#if !FROM_FILE
   /** \brief The serial port that listens for GNSS measurements */
   serial::Serial serial_port;
+#endif
 
   /** \brief RTKLIB struct that stores observations, ephemerides */
   rtcm_t rtcm;

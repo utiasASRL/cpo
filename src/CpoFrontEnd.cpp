@@ -5,11 +5,16 @@
 #include <CpoFrontEnd.hpp>
 
 CpoFrontEnd::CpoFrontEnd(const std::string &port_path, unsigned long baud)
-    : serial_port(port_path, baud, serial::Timeout::simpleTimeout(1000)) {
+#if !FROM_FILE
+    : serial_port(port_path, baud, serial::Timeout::simpleTimeout(1000))
+#endif
+  {
 
   // clear anything in serial buffer
   usleep(50000);
+#if !FROM_FILE
   serial_port.flushInput();
+#endif
 
   init_rtcm(&rtcm);
 

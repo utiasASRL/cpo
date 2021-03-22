@@ -13,12 +13,14 @@ int main() {
   }
 
   // serial port parameters
-  std::string port0_path = "/dev/ttyUSB0";    // todo: easier option besides serial for faster development
+  std::string port0_path = "/dev/ttyUSB0";
   unsigned long baud = 9600;
 
+#if !FROM_FILE
   if (!fs::exists(port0_path)) {          // todo: should this warn and keep trying to connect instead?
     throw std::runtime_error("Serial connection not found. Check that USB is plugged in.");
   }
+#endif
 
   CpoFrontEnd node(port0_path, baud);
 
@@ -26,10 +28,19 @@ int main() {
   unsigned char byte_in;          // todo: add option to log raw RTCM to file?
   size_t total_bytes_read = 0;
   int status;
+#if !FROM_FILE
   while (true) {
     size_t bytes_read = node.serial_port.read(&byte_in, 1);
 
     if (!bytes_read) continue;
+#else
+  auto fp = fopen("/home/ben/CLionProjects/gpso/data/rtcm3/feb10a.BIN", "r");
+
+  int data_int;
+  while ((data_int = fgetc(fp)) != EOF) {
+    byte_in = data_int;
+    size_t bytes_read = 0;
+#endif
 
     total_bytes_read += bytes_read;
 
@@ -50,8 +61,8 @@ int main() {
         }
       }
 
-      std::cout << node.eph_count_gps << "   Found " << node.curr_sats->size() << " satellites!   " ; // debugging
-      for (const auto & sat : *node.curr_sats) std::cout << (int)sat.first << ", ";
+      std::cout << node.eph_count_gps << "   Found " << node.curr_sats->size() << " satellites!   "; // debugging
+      for (const auto &sat : *node.curr_sats) std::cout << (int) sat.first << ", ";
       std::cout << std::endl;
 
       if (node.eph_count_gps >= 5) {      // todo: may not need this if we're checking pntpos() return value
@@ -73,22 +84,20 @@ int main() {
         sol_t init_solution;
         char error_msg[128];
         bool success = pntpos(node.rtcm.obs.data,     // todo - debug
-               node.rtcm.obs.n,
-               &node.rtcm.nav,
-               &node.code_positioning_options,
-               &init_solution,
-               nullptr,
-               nullptr,
-               error_msg);
+                              node.rtcm.obs.n,
+                              &node.rtcm.nav,
+                              &node.code_positioning_options,
+                              &init_solution,
+                              nullptr,
+                              nullptr,
+                              error_msg);
 
-        for (const auto & ch : error_msg) std::cout << (char) ch;
+        for (const auto &ch : error_msg) std::cout << (char) ch;
         std::cout << std::endl;
 
         if (success && !node.enu_origin_set) {
           node.setOrigin(&init_solution.rr[0]);
         }
-
-
 
       }
 
@@ -96,7 +105,7 @@ int main() {
 
     // ephemeris message received. Keep track of which satellites have ephemeris
     if (status == 2) {
-      const auto & current_eph_sat = node.rtcm.ephsat;
+      const auto &current_eph_sat = node.rtcm.ephsat;
       if (!node.eph_set_gps[current_eph_sat - MINPRNGPS]) {
         std::cout << "Eph set for  " << current_eph_sat << std::endl;   // debug
 
