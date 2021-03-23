@@ -2,7 +2,9 @@
 
 #include <CpoFrontEnd.hpp>
 
-int main() {
+int main(int argc, char **argv) {
+
+  rclcpp::init(argc, argv);
 
   // set up RTKLIB logging
   int trace_level = 3;
