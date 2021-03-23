@@ -8,6 +8,7 @@
 #include <rclcpp/rclcpp.hpp>
 
 #include <SatelliteObs.hpp>
+#include <cpo_interfaces/msg/tdcp.hpp>
 
 #define FROM_FILE 1         // reads data from binary file rather than over serial port
 
@@ -22,9 +23,8 @@ class CpoFrontEnd : public rclcpp::Node {
   /** \brief Constructor */
   CpoFrontEnd(const std::string &port_path, unsigned long baud);
 
-
-
-//  void publishTdcp();
+  /** \brief Publishes message with phases, vectors in it */
+  void publishTdcp(const cpo_interfaces::msg::TDCP &message);
 
 //  void updateSats();
 
@@ -79,8 +79,7 @@ class CpoFrontEnd : public rclcpp::Node {
   Eigen::Matrix3d C_enu_ecef_;
 
   /** \brief Publishes the TDCP pseudo-measurement ROS2 msg
-   * \note NOT IMPLEMENTED YET
    * */
-//  rclcpp::Publisher publisher_;
+  rclcpp::Publisher<cpo_interfaces::msg::TDCP>::SharedPtr publisher_;
 
 };

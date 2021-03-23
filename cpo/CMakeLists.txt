@@ -10,6 +10,8 @@ find_package(rclcpp REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(serial REQUIRED)
 
+find_package(cpo_interfaces)
+
 set(RTK_LIB_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/../deps/RTKLIB)
 
 add_library(rtklib ${RTK_LIB_DIRECTORY}/src/rtkcmn.c
@@ -25,7 +27,7 @@ add_library(rtklib ${RTK_LIB_DIRECTORY}/src/rtkcmn.c
         )
 
 add_executable(cpo src/main.cpp src/CpoFrontEnd.cpp src/SatelliteObs.cpp)
-ament_target_dependencies(cpo rclcpp)
+ament_target_dependencies(cpo rclcpp cpo_interfaces)
 target_include_directories(cpo PUBLIC ${RTK_LIB_DIRECTORY}/src ${EIGEN3_INCLUDE_DIR} include)
 target_link_libraries(cpo serial rtklib)
 

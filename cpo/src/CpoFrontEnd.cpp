@@ -11,6 +11,8 @@ CpoFrontEnd::CpoFrontEnd(const std::string &port_path, unsigned long baud)
 #endif
 {
 
+  publisher_ = this->create_publisher<cpo_interfaces::msg::TDCP>("tdcp", 10);
+
   // clear anything in serial buffer
   usleep(50000);
 #if !FROM_FILE
@@ -56,4 +58,8 @@ void CpoFrontEnd::update_code_pos(double *rr) {
   Eigen::Vector3d r_vc_inc(rr[0], rr[1], rr[2]);
   curr_code_solution_ = C_enu_ecef_ * (r_vc_inc - enu_origin_);
 //  std::cout << "curr_code_solution_ " << curr_code_solution_.transpose() << std::endl;    // DEBUG
+}
+
+void CpoFrontEnd::publishTdcp(const cpo_interfaces::msg::TDCP &message) {
+  publisher_->publish(message);
 }

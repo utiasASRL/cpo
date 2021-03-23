@@ -96,7 +96,13 @@ int main(int argc, char **argv) {
 
 
 
-        // publishTdcp();
+        // dummy msg for testing right now
+        cpo_interfaces::msg::TDCP test_msg;
+        test_msg.t_a = 1615000017222000000;
+        test_msg.t_b = 1615000018000000000;
+
+        // publish the pseudo-measurement to be used by the back-end
+        node.publishTdcp(test_msg);
       }
 
       // todo: curr {sats, code_pos} -> prev {sats, code_pos}
