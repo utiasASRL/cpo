@@ -10,7 +10,7 @@ find_package(rclcpp REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(serial REQUIRED)
 
-set(RTK_LIB_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/deps/RTKLIB)
+set(RTK_LIB_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/../deps/RTKLIB)
 
 add_library(rtklib ${RTK_LIB_DIRECTORY}/src/rtkcmn.c
         ${RTK_LIB_DIRECTORY}/src/rtcm.c
