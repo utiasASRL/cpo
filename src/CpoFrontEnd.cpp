@@ -5,8 +5,9 @@
 #include <CpoFrontEnd.hpp>
 
 CpoFrontEnd::CpoFrontEnd(const std::string &port_path, unsigned long baud)
+    : Node("cpo_front_end")
 #if !FROM_FILE
-: serial_port(port_path, baud, serial::Timeout::simpleTimeout(1000))
+, serial_port(port_path, baud, serial::Timeout::simpleTimeout(1000))
 #endif
 {
 

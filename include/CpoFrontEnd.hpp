@@ -5,6 +5,7 @@
 #include <serial/serial.h>
 #include <rtklib.h>
 #include <Eigen/Core>
+#include <rclcpp/rclcpp.hpp>
 
 #include <SatelliteObs.hpp>
 
@@ -15,7 +16,7 @@ namespace fs = std::filesystem;
 /** \brief Class to read and process raw GNSS measurements.
  * Sends pseudo-measurements as ROS2 msgs to a back end.
  * */
-class CpoFrontEnd {
+class CpoFrontEnd : public rclcpp::Node {
  public:
 
   /** \brief Constructor */

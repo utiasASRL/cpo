@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.17)
+cmake_minimum_required(VERSION 3.14)
 project(cpo)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -25,6 +25,7 @@ add_library(rtklib ${RTK_LIB_DIRECTORY}/src/rtkcmn.c
         )
 
 add_executable(cpo src/main.cpp src/CpoFrontEnd.cpp src/SatelliteObs.cpp)
+ament_target_dependencies(cpo rclcpp)
 target_include_directories(cpo PUBLIC ${RTK_LIB_DIRECTORY}/src ${EIGEN3_INCLUDE_DIR} include)
 target_link_libraries(cpo serial rtklib)
 
