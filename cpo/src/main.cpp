@@ -90,10 +90,47 @@ int main(int argc, char **argv) {
         }
       }
 
+      // perform TDCP
       if (node.prev_sats->size() >= 2) {
-        // todo - the meat
+        // iterate through map to find common satellites
+        std::vector<int> matches;
+        for (auto &[id, curr_sat] : *node.curr_sats) {
+          // check for valid ephemeris and continuous phase lock
+          if (node.eph_set_gps[id] && curr_sat.isPhaseLocked()) {
+            // check that we saw the same satellite last msg
+            if (node.prev_sats->count(id) == 1) {
+              matches.push_back(id);
+            }
+          }
+        }
+
+        // check that we have at least 2 satellite matches so we can create a double-difference
+        if (matches.size() < 2) continue;
+
+        // if we have gotten this far, we plan on publishing a message
+        cpo_interfaces::msg::TDCP meas_msg;
+
+        // calculate necessary values for each pair to fill in SatPair msg
+        // we'll use the 1st match as the 1st satellite for all pairs and the j^th match for the 2nd
+        for (unsigned int j = 1; j < matches.size(); ++j) {
+
+          const auto &sat_1a = node.prev_sats->at(matches[0]);
+          const auto &sat_1b = node.curr_sats->at(matches[0]);
+          const auto &sat_2a = node.prev_sats->at(matches[j]);
+          const auto &sat_2b = node.curr_sats->at(matches[j]);
+
+          double phi_dd = (sat_2b.getAdjPhaseRange() - sat_2a.getAdjPhaseRange())
+              - (sat_1b.getAdjPhaseRange() - sat_1a.getAdjPhaseRange());
+
+          // todo: satellite vectors
 
 
+
+          cpo_interfaces::msg::SatPair pair_msg;
+          pair_msg.phi_measured = phi_dd;
+
+          meas_msg.pairs.push_back(pair_msg);
+        }
 
 
         // dummy msg for testing right now
