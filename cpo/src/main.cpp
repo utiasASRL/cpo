@@ -86,7 +86,7 @@ int main(int argc, char **argv) {
           if (!node.enu_origin_set) {
             node.setEnuOrigin(&init_solution.rr[0]);
           }
-          node.update_code_pos(&init_solution.rr[0]);
+          node.updateCodePos(&init_solution.rr[0]);
         }
       }
 
@@ -105,8 +105,8 @@ int main(int argc, char **argv) {
         node.publishTdcp(test_msg);
       }
 
-      // todo: curr {sats, code_pos} -> prev {sats, code_pos}
-
+      // current {sats, code_pos} -> previous {sats, code_pos}
+      node.stepForward();
     }
 
     // ephemeris message received. Keep track of which satellites have ephemeris

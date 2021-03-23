@@ -54,7 +54,7 @@ void CpoFrontEnd::setEnuOrigin(double *rr) {
             << geo_init[2] << " m alt." << std::endl;
 }
 
-void CpoFrontEnd::update_code_pos(double *rr) {
+void CpoFrontEnd::updateCodePos(double *rr) {
   Eigen::Vector3d r_vc_inc(rr[0], rr[1], rr[2]);
   curr_code_solution_ = C_enu_ecef_ * (r_vc_inc - enu_origin_);
 //  std::cout << "curr_code_solution_ " << curr_code_solution_.transpose() << std::endl;    // DEBUG
@@ -62,4 +62,15 @@ void CpoFrontEnd::update_code_pos(double *rr) {
 
 void CpoFrontEnd::publishTdcp(const cpo_interfaces::msg::TDCP &message) {
   publisher_->publish(message);
+}
+
+void CpoFrontEnd::stepForward() {
+  // move current sats to previous sats and create empty map for current sats to be filled next loop
+  prev_sats = curr_sats;
+  curr_sats.reset();
+  curr_sats = std::make_shared<std::unordered_map<uint8_t, SatelliteObs>>();
+
+  // move current code solution to previous and set current solution to zero
+  prev_code_solution_ = curr_code_solution_;
+  curr_code_solution_ = Eigen::Vector3d::Zero();
 }

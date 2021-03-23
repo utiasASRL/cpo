@@ -26,7 +26,8 @@ class CpoFrontEnd : public rclcpp::Node {
   /** \brief Publishes message with phases, vectors in it */
   void publishTdcp(const cpo_interfaces::msg::TDCP &message);
 
-//  void updateSats();
+  /** \brief Moves current satellites, positions to previous */
+  void stepForward();
 
   /** \brief Set ECEF coordinates of our local ENU frame
    * Should usually only be called once
@@ -34,7 +35,7 @@ class CpoFrontEnd : public rclcpp::Node {
   void setEnuOrigin(double *rr);
 
   /** \brief Update the latest code solution we calculated */
-  void update_code_pos(double *rr);
+  void updateCodePos(double *rr);
 
 #if !FROM_FILE
   /** \brief The serial port that listens for GNSS measurements */
