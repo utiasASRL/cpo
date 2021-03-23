@@ -5,6 +5,8 @@ set(CMAKE_CXX_STANDARD 17)
 
 add_compile_options(-DTRACE)            # enables 'trace' debugging in RTKLIB
 
+find_package(ament_cmake REQUIRED)
+find_package(rclcpp REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(serial REQUIRED)
 
@@ -28,3 +30,5 @@ target_link_libraries(cpo serial rtklib)
 
 add_executable(replay_RTCM src/replay_rtcm.cpp)
 target_link_libraries(replay_RTCM serial)
+
+ament_package()
