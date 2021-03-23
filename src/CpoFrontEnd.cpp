@@ -51,8 +51,8 @@ void CpoFrontEnd::setEnuOrigin(double *rr) {
             << geo_init[2] << " m alt." << std::endl;
 }
 
-void CpoFrontEnd::update_last_pos(double *rr) {
+void CpoFrontEnd::update_code_pos(double *rr) {
   Eigen::Vector3d r_vc_inc(rr[0], rr[1], rr[2]);
-  latest_code_solution_ = C_enu_ecef_ * (r_vc_inc - enu_origin_);
-//  std::cout << "latest_code_solution_ " << latest_code_solution_.transpose() << std::endl;    // DEBUG
+  curr_code_solution_ = C_enu_ecef_ * (r_vc_inc - enu_origin_);
+//  std::cout << "curr_code_solution_ " << curr_code_solution_.transpose() << std::endl;    // DEBUG
 }

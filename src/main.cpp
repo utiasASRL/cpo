@@ -84,13 +84,21 @@ int main() {
           if (!node.enu_origin_set) {
             node.setEnuOrigin(&init_solution.rr[0]);
           }
-
-          // todo - the meat
-
-
-          node.update_last_pos(&init_solution.rr[0]);
+          node.update_code_pos(&init_solution.rr[0]);
         }
       }
+
+      if (node.prev_sats->size() >= 2) {
+        // todo - the meat
+
+
+
+
+        // publishTdcp();
+      }
+
+      // todo: curr {sats, code_pos} -> prev {sats, code_pos}
+
     }
 
     // ephemeris message received. Keep track of which satellites have ephemeris

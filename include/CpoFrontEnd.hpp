@@ -33,7 +33,7 @@ class CpoFrontEnd {
   void setEnuOrigin(double *rr);
 
   /** \brief Update the latest code solution we calculated */
-  void update_last_pos(double *rr);
+  void update_code_pos(double *rr);
 
 #if !FROM_FILE
   /** \brief The serial port that listens for GNSS measurements */
@@ -64,9 +64,12 @@ class CpoFrontEnd {
 
  private:
 
-  /** \brief The last single-point positioning (pseudorange) estimate */
+  /** \brief The current single-point positioning (pseudorange) estimate */
   // todo - what frame do we want this? will use ENU (g) for now
-  Eigen::Vector3d latest_code_solution_;
+  Eigen::Vector3d curr_code_solution_;
+
+  /** \brief The previous single-point positioning (pseudorange) estimate */
+  Eigen::Vector3d prev_code_solution_;
 
   /** \brief Position of the local East-North-Up frame origin in ECEF coordinates */
   Eigen::Vector3d enu_origin_;
