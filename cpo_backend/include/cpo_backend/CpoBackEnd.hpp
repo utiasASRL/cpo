@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Eigen/Core>
+#include <steam.hpp>
 #include <rclcpp/rclcpp.hpp>
 
 #include <cpo_interfaces/msg/tdcp.hpp>
