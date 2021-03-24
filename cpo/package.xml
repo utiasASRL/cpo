@@ -3,7 +3,7 @@
 <package format="3">
     <name>cpo</name>
     <version>0.0.0</version>
-    <description>Carrier-Phase Odometry </description>
+    <description>Carrier-Phase Odometry Preprocessing</description>
     <maintainer email="ben.congram@robotics.utias.utoronto.ca">Ben</maintainer>
     <license>BSD</license>
 
