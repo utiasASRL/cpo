@@ -23,6 +23,9 @@ class CpoFrontEnd : public rclcpp::Node {
   /** \brief Constructor */
   CpoFrontEnd(const std::string &port_path, unsigned long baud);
 
+  /** \brief todo */
+  int getSatelliteVector(int sat_no, gtime_t time, gtime_t eph_time, Eigen::Vector3d &r);
+
   /** \brief Publishes message with phases, vectors in it */
   void publishTdcp(const cpo_interfaces::msg::TDCP &message);
 

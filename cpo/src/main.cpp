@@ -67,7 +67,8 @@ int main(int argc, char **argv) {
       for (const auto &sat : *node.curr_sats) std::cout << (int) sat.first << ", ";
       std::cout << std::endl;
 
-      if (node.eph_count_gps >= 5) {      // todo: may not need this if we're checking pntpos() return value
+      // only attempt TDCP if we have enough ephemeris info
+      if (node.eph_count_gps >= 4) {
 
         // get approximate start position through single-point (pseudo-range) positioning
         sol_t init_solution;
@@ -111,45 +112,25 @@ int main(int argc, char **argv) {
 
           // calculate necessary values for each pair to fill in SatPair msg
           // we'll use the 1st match as the 1st satellite for all pairs and the j^th match for the 2nd
-          const auto &sat_1a = node.prev_sats->at(matches[0]);
-          const auto &sat_1b = node.curr_sats->at(matches[0]);
+          int sat_1_id = matches[0];
+          const auto &sat_1a = node.prev_sats->at(sat_1_id);
+          const auto &sat_1b = node.curr_sats->at(sat_1_id);
 
           gtime_t prev_time = sat_1a.getTimestamp();
           gtime_t curr_time = sat_1b.getTimestamp();
+          meas_msg.t_a = 1e9 * (prev_time.time + prev_time.sec);  // todo: may lose precision here but shouldn't matter
+          meas_msg.t_b = 1e9 * (curr_time.time + prev_time.sec);
 
           // calculate vectors to the 1st satellite
           Eigen::Vector3d r_1a_a;
           Eigen::Vector3d r_1a_b;
-          {
-            double *rs;                 // satellite positions and velocities at previous time
-            double *dts;                // satellite clocks
-            double *var;                // variances on positions and clock errors
-            int svh[MAXOBS];            // satellite health flags
-            rs = mat(6, 1);
-            dts = mat(2, 1);    // todo: better way to handle this stuff
-            var = mat(1, 1);
-            int pos_status = satpos(prev_time, prev_time, matches[0], EPHOPT_BRDC, &node.rtcm.nav, rs, dts, var, svh);
-            if (!pos_status)
-              std::cout << "WARNING: Positioning error for satellite " << matches[0] << std::endl;   //todo: better way
-            r_1a_a << rs[0], rs[1], rs[2];
-          }
-          {
-            double *rs;                 // satellite positions and velocities at current time
-            double *dts;                // satellite clocks
-            double *var;                // variances on positions and clock errors
-            int svh[MAXOBS];            // satellite health flags
-            rs = mat(6, 1);
-            dts = mat(2, 1);    // todo: better way to handle this stuff
-            var = mat(1, 1);
-            int pos_status = satpos(curr_time, prev_time, matches[0], EPHOPT_BRDC, &node.rtcm.nav, rs, dts, var, svh);
-            if (!pos_status)
-              std::cout << "WARNING: Positioning error for satellite " << matches[0] << std::endl;   //todo: better way
-            r_1a_b << rs[0], rs[1], rs[2];
-          }
+          node.getSatelliteVector(sat_1_id, prev_time, prev_time, r_1a_a);    //todo: should check return value
+          node.getSatelliteVector(sat_1_id, curr_time, prev_time, r_1a_b);
 
           for (unsigned int j = 1; j < matches.size(); ++j) {
-            const auto &sat_2a = node.prev_sats->at(matches[j]);
-            const auto &sat_2b = node.curr_sats->at(matches[j]);
+            int sat_2_id = matches[j];
+            const auto &sat_2a = node.prev_sats->at(sat_2_id);
+            const auto &sat_2b = node.curr_sats->at(sat_2_id);
 
             double phi_dd = (sat_2b.getAdjPhaseRange() - sat_2a.getAdjPhaseRange())
                 - (sat_1b.getAdjPhaseRange() - sat_1a.getAdjPhaseRange());
@@ -157,9 +138,8 @@ int main(int argc, char **argv) {
             // calculate vectors to 2nd satellite
             Eigen::Vector3d r_2a_a = Eigen::Vector3d::Zero();   // placeholder
             Eigen::Vector3d r_2a_b = Eigen::Vector3d::Zero();   // placeholder
-
-            // todo: satellite vectors
-
+            node.getSatelliteVector(sat_2_id, prev_time, prev_time, r_2a_a);
+            node.getSatelliteVector(sat_2_id, curr_time, prev_time, r_2a_b);
 
             cpo_interfaces::msg::SatPair pair_msg;
             pair_msg.phi_measured = phi_dd;
@@ -178,18 +158,10 @@ int main(int argc, char **argv) {
 
             meas_msg.pairs.push_back(pair_msg);
           }
-
-
-          // dummy msg for testing right now
-          cpo_interfaces::msg::TDCP test_msg;
-          test_msg.t_a = prev_time.time + prev_time.sec;
-          test_msg.t_b = curr_time.time + prev_time.sec;
-
           // publish the pseudo-measurement to be used by the back-end
-          node.publishTdcp(test_msg);
+          node.publishTdcp(meas_msg);
         }
       }
-
       // current {sats, code_pos} -> previous {sats, code_pos}
       node.stepForward();
     }
@@ -198,8 +170,6 @@ int main(int argc, char **argv) {
     if (rtcm_status == 2) {
       const auto &current_eph_sat = node.rtcm.ephsat;
       if (!node.eph_set_gps[current_eph_sat - MINPRNGPS]) {
-        std::cout << "Eph set for  " << current_eph_sat << std::endl;   // debug
-
         node.eph_count_gps++;
       }
       node.eph_set_gps[current_eph_sat] = true;
