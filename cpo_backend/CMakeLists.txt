@@ -9,7 +9,7 @@ find_package(Eigen3 REQUIRED)
 
 find_package(cpo_interfaces)
 
-add_executable(cpo_backend src/main.cpp)
+add_executable(cpo_backend src/main.cpp src/CpoBackEnd.cpp)
 ament_target_dependencies(cpo_backend rclcpp cpo_interfaces)
 target_include_directories(cpo_backend PUBLIC ${EIGEN3_INCLUDE_DIR} include)
 #target_link_libraries(cpo )

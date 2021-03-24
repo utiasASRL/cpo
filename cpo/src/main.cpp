@@ -179,5 +179,6 @@ int main(int argc, char **argv) {
     if (total_bytes_read > 4000 * 1024) break;      // temporary so doesn't complain about endless loops
   }
 
+  rclcpp::shutdown();
   return 0;
 }
