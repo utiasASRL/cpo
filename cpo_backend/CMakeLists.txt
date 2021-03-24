@@ -11,7 +11,7 @@ find_package(steam REQUIRED)
 
 find_package(cpo_interfaces)
 
-add_executable(cpo_backend src/main.cpp src/CpoBackEnd.cpp)
+add_executable(cpo_backend src/main.cpp src/CpoBackEnd.cpp src/TdcpErrorEval.cpp)
 ament_target_dependencies(cpo_backend
         Eigen3
         rclcpp
