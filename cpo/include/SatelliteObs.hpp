@@ -16,6 +16,11 @@ class SatelliteObs {
   /** \brief Returns negation of loss-of-lock indicator */
   bool isPhaseLocked() const;
 
+  /** \brief Return timestamp of observation */
+  gtime_t getTimestamp() const {
+    return observation_.time;
+  }
+
  private:
 
   /** \brief Struct containing phase, pseudorange measurements among other things */

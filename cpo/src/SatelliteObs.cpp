@@ -16,5 +16,5 @@ double SatelliteObs::getAdjPhaseRange() const {
 }
 
 bool SatelliteObs::isPhaseLocked() const {
-  return observation_.LLI[0];
+  return !observation_.LLI[0];
 }
