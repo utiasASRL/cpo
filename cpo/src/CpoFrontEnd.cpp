@@ -10,7 +10,6 @@ CpoFrontEnd::CpoFrontEnd(const std::string &port_path, unsigned long baud)
 , serial_port(port_path, baud, serial::Timeout::simpleTimeout(1000))
 #endif
 {
-
   publisher_ = this->create_publisher<cpo_interfaces::msg::TDCP>("tdcp", 10);
 
   // clear anything in serial buffer
@@ -21,10 +20,9 @@ CpoFrontEnd::CpoFrontEnd(const std::string &port_path, unsigned long baud)
 
   init_rtcm(&rtcm);
 
-  long approximate_time = std::time(nullptr);
+  long approximate_time = std::time(nullptr);     // todo: switch to this when online
   approximate_time = 1613000000;      // setting manually for development
 
-  std::cout << "Approx time " << approximate_time << std::endl;   // debug. Todo: clean up
   rtcm.time = {.time = approximate_time};
 
   code_positioning_options.navsys = SYS_GPS;    // using GPS only for this for now
@@ -45,7 +43,7 @@ int CpoFrontEnd::getSatelliteVector(int sat_no, gtime_t time, gtime_t eph_time, 
   var = mat(1, 1);
   int pos_status = satpos(time, eph_time, sat_no, EPHOPT_BRDC, &rtcm.nav, rs, dts, var, svh);
   if (!pos_status)
-    std::cout << "WARNING: Positioning error for satellite " << sat_no << std::endl;   //todo: better way
+    std::cout << "WARNING: Positioning error for satellite " << sat_no << std::endl;
 
   Eigen::Vector3d r_1c_c{rs[0], rs[1], rs[2]};
   Eigen::Vector3d r_1g_g = C_enu_ecef_ * (r_1c_c - enu_origin_);

@@ -4,6 +4,7 @@
 
 int main(int argc, char **argv) {
 
+  // initialize ROS2
   rclcpp::init(argc, argv);
 
   // set up RTKLIB logging

@@ -65,8 +65,7 @@ class CpoFrontEnd : public rclcpp::Node {
   std::shared_ptr<std::unordered_map<uint8_t, SatelliteObs>> curr_sats;
 
   /** \brief Keep track of which GPS satellites we have ephemeris info for */
-//  bool eph_set_gps[NSATGPS] = { false };
-  bool eph_set_gps[64] = {false};       // todo: figure out weird memory things happening to eph_count_gps
+  bool eph_set_gps[64] = {false};
 
   /** \brief Number of  GPS satellites we have ephemeris info for */
   uint eph_count_gps = 0;
@@ -76,8 +75,7 @@ class CpoFrontEnd : public rclcpp::Node {
 
  private:
 
-  /** \brief The current single-point positioning (pseudorange) estimate */
-  // todo - what frame do we want this? will use ENU (g) for now
+  /** \brief The current single-point positioning (pseudorange) estimate in the ENU frame */
   Eigen::Vector3d curr_code_solution_;
 
   /** \brief The previous single-point positioning (pseudorange) estimate */
@@ -89,8 +87,7 @@ class CpoFrontEnd : public rclcpp::Node {
   /** \brief SO(3) rotation matrix between the ENU and ECEF frames */
   Eigen::Matrix3d C_enu_ecef_;
 
-  /** \brief Publishes the TDCP pseudo-measurement ROS2 msg
-   * */
+  /** \brief Publishes the TDCP pseudo-measurement ROS2 msg */
   rclcpp::Publisher<cpo_interfaces::msg::TDCP>::SharedPtr publisher_;
 
 };
