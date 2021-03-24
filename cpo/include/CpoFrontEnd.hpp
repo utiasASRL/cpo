@@ -23,8 +23,15 @@ class CpoFrontEnd : public rclcpp::Node {
   /** \brief Constructor */
   CpoFrontEnd(const std::string &port_path, unsigned long baud);
 
-  /** \brief todo */
-  int getSatelliteVector(int sat_no, gtime_t time, gtime_t eph_time, Eigen::Vector3d &r);
+  /** \brief Calculate vector from previous code solution to satellite at given time
+   * \param sat_no      The satellite PRN
+   * \param time        The time the vector should be taken at
+   * \param eph_time    Time to look for the ephemeris msg
+   * \param r_sa_g      [out] The vector we want
+   *
+   * \return status     [0 error; 1 success]
+   * */
+  int getSatelliteVector(int sat_no, gtime_t time, gtime_t eph_time, Eigen::Vector3d &r_sa_g);
 
   /** \brief Publishes message with phases, vectors in it */
   void publishTdcp(const cpo_interfaces::msg::TDCP &message);

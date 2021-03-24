@@ -35,7 +35,7 @@ CpoFrontEnd::CpoFrontEnd(const std::string &port_path, unsigned long baud)
   curr_sats = std::make_shared<std::unordered_map<uint8_t, SatelliteObs>>();
 }
 
-int CpoFrontEnd::getSatelliteVector(int sat_no, gtime_t time, gtime_t eph_time, Eigen::Vector3d &r) {
+int CpoFrontEnd::getSatelliteVector(int sat_no, gtime_t time, gtime_t eph_time, Eigen::Vector3d &r_sa_g) {
   double *rs;                 // satellite positions and velocities at previous time
   double *dts;                // satellite clocks
   double *var;                // variances on positions and clock errors
@@ -46,7 +46,10 @@ int CpoFrontEnd::getSatelliteVector(int sat_no, gtime_t time, gtime_t eph_time, 
   int pos_status = satpos(time, eph_time, sat_no, EPHOPT_BRDC, &rtcm.nav, rs, dts, var, svh);
   if (!pos_status)
     std::cout << "WARNING: Positioning error for satellite " << sat_no << std::endl;   //todo: better way
-  r << rs[0], rs[1], rs[2];
+
+  Eigen::Vector3d r_1c_c{rs[0], rs[1], rs[2]};
+  Eigen::Vector3d r_1g_g = C_enu_ecef_ * (r_1c_c - enu_origin_);
+  r_sa_g = r_1g_g - prev_code_solution_;
 
   return pos_status;
 }
