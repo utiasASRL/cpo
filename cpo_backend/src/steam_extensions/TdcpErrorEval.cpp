@@ -22,7 +22,7 @@ TdcpErrorEval::TdcpErrorEval(double phi_dd,
 }
 
 bool TdcpErrorEval::isActive() const {
-  return false;   // todo
+  return r_ba_ina_->isActive() || C_ag_->isActive();
 }
 
 Eigen::Matrix<double, 1, 1> TdcpErrorEval::evaluate() const {
