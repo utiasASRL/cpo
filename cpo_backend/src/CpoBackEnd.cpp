@@ -27,9 +27,26 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg) {
   // todo: will have to save(?) set of ErrorEvals/costs/the problem as member of CpoBackEnd. Still need to figure out
 
   if ("some_condition") {
+    resetProblem();
+
     /// set up steam problem
-    /// optimize
-    /// call publisher if successful
+
+    problem_->addCostTerm(tdcp_cost_terms_);
+    problem_->addCostTerm(nonholonomic_cost_terms_);
+    problem_->addCostTerm(smoothing_cost_terms_);
+
+    // setup solver and optimize
+    steam::DoglegGaussNewtonSolver::Params params;
+    params.verbose = true;      // todo: make configurable
+    params.maxIterations = 5;
+    solver_.reset(new steam::DoglegGaussNewtonSolver(problem_.get(), params));
+    solver_->optimize();
+
+    // get optimized transform and publish
+//    lgmath::se3::Transformation pose = latest_statevar->getValue();
+//    Eigen::Matrix<double, 6, 6> pose_covariance = solver_->queryCovariance(latest_statevar->getKey());
+//    geometry_msgs::msg::PoseWithCovariance pose_msg = toPoseMsg(pose, pose_covariance);
+//    publisher_->publish(pose_msg);
   }
 
 }
@@ -60,4 +77,18 @@ void CpoBackEnd::getParams() {
       ang_acc_std_dev_x, ang_acc_std_dev_y, ang_acc_std_dev_z;
   smoothing_factor_information_.setZero();
   smoothing_factor_information_.diagonal() = 1.0 / Qc_diag;
+}
+
+void CpoBackEnd::resetProblem() {
+  // setup loss functions
+  tdcp_loss_function_.reset(new steam::DcsLossFunc(2.0));
+  nonholonomic_loss_function_.reset(new steam::L2LossFunc());
+
+  // setup cost terms
+  tdcp_cost_terms_.reset(new steam::ParallelizedCostTermCollection());
+  nonholonomic_cost_terms_.reset(new steam::ParallelizedCostTermCollection());
+  smoothing_cost_terms_.reset(new steam::ParallelizedCostTermCollection());
+
+  // set up the steam problem
+  problem_.reset(new steam::OptimizationProblem());
 }

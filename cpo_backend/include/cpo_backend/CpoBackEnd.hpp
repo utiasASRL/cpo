@@ -22,6 +22,8 @@ class CpoBackEnd : public rclcpp::Node {
   /** \brief Callback for TDCP msgs */
   void _tdcpCallback(cpo_interfaces::msg::TDCP::SharedPtr msg);
 
+  void resetProblem();
+
   /** \brief Subscriber for TDCP msgs */
   rclcpp::Subscription<cpo_interfaces::msg::TDCP>::SharedPtr subscription_;
 
@@ -41,6 +43,9 @@ class CpoBackEnd : public rclcpp::Node {
 
   /** \brief Cost terms associated with nonholonomic prior. */
   steam::ParallelizedCostTermCollection::Ptr nonholonomic_cost_terms_;      // todo: may need some other terms from gpso
+
+  /** \brief Cost terms associated with white-noise-on-acceleration motion prior */
+  steam::ParallelizedCostTermCollection::Ptr smoothing_cost_terms_;
 
   /** \brief Loss function associated with TDCP costs */
   steam::LossFunctionBase::Ptr tdcp_loss_function_;
