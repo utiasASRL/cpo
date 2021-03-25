@@ -9,6 +9,7 @@ using SteamTrajVar = steam::se3::SteamTrajVar;
 using VectorSpaceStateVar = steam::VectorSpaceStateVar;
 using PositionEvaluator = steam::se3::PositionEvaluator;
 using RotationEvaluator = steam::so3::RotationEvaluator;
+using RotationStateEvaluator = steam::so3::RotationStateEvaluator;
 
 using RotationStateVar = steam::LieGroupStateVar<lgmath::so3::Rotation, 3>;
 
@@ -69,9 +70,9 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg) {
     PositionEvaluator::ConstPtr r_ba_ina
         (new PositionEvaluator(TransformStateEvaluator::MakeShared(statevars.back())));   // todo: will eventually want several of these
 
-    // todo: set up C_ag state and RotationEvaluator
+    // set up C_ag state and RotationEvaluator
     RotationStateVar::Ptr C_ag_statevar(new RotationStateVar());
-    RotationEvaluator::ConstPtr C_ag(new RotationEvaluator(RotationStateEvaluator::MakeShared(C_ag_statevar)));  // (?) todo
+    RotationEvaluator::ConstPtr C_ag = RotationStateEvaluator::MakeShared(C_ag_statevar);
 
 
 

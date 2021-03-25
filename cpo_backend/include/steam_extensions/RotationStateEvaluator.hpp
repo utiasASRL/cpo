@@ -1,37 +1,39 @@
 //////////////////////////////////////////////////////////////////////////////////////////////
-/// \file TransformStateEvaluator.hpp
+/// \file RotationStateEvaluator.hpp
 ///
-/// \author Sean Anderson, ASRL
+/// \author Ben Congram, based on Sean Anderson's RotationStateEvaluator.cpp
 //////////////////////////////////////////////////////////////////////////////////////////////
 
-#ifndef STEAM_TRANSFORM_STATE_EVALUATOR_HPP
-#define STEAM_TRANSFORM_STATE_EVALUATOR_HPP
+#ifndef STEAM_ROTATION_STATE_EVALUATOR_HPP
+#define STEAM_ROTATION_STATE_EVALUATOR_HPP
 
-#include <steam/evaluator/blockauto/transform/TransformEvaluator.hpp>
+#include <RotationEvaluator.hpp>
+
+using RotationStateVar = steam::LieGroupStateVar<lgmath::so3::Rotation, 3>;
 
 namespace steam {
-namespace se3 {
+namespace so3 {
 
 //////////////////////////////////////////////////////////////////////////////////////////////
 /// \brief Simple transform evaluator for a transformation state variable
 //////////////////////////////////////////////////////////////////////////////////////////////
-class TransformStateEvaluator : public TransformEvaluator
+class RotationStateEvaluator : public RotationEvaluator
 {
  public:
 
   /// Convenience typedefs
-  typedef boost::shared_ptr<TransformStateEvaluator> Ptr;
-  typedef boost::shared_ptr<const TransformStateEvaluator> ConstPtr;
+  typedef boost::shared_ptr<RotationStateEvaluator> Ptr;
+  typedef boost::shared_ptr<const RotationStateEvaluator> ConstPtr;
 
   //////////////////////////////////////////////////////////////////////////////////////////////
   /// \brief Constructor
   //////////////////////////////////////////////////////////////////////////////////////////////
-  TransformStateEvaluator(const se3::TransformStateVar::Ptr& transform);
+  RotationStateEvaluator(const RotationStateVar::Ptr& rotation);
 
   //////////////////////////////////////////////////////////////////////////////////////////////
   /// \brief Pseudo constructor - return a shared pointer to a new instance
   //////////////////////////////////////////////////////////////////////////////////////////////
-  static Ptr MakeShared(const se3::TransformStateVar::Ptr& transform);
+  static Ptr MakeShared(const RotationStateVar::Ptr& rotation);
 
   //////////////////////////////////////////////////////////////////////////////////////////////
   /// \brief Returns whether or not an evaluator contains unlocked state variables
@@ -47,7 +49,7 @@ class TransformStateEvaluator : public TransformEvaluator
   //////////////////////////////////////////////////////////////////////////////////////////////
   /// \brief Evaluate the transformation matrix
   //////////////////////////////////////////////////////////////////////////////////////////////
-  virtual lgmath::se3::Transformation evaluate() const;
+  virtual lgmath::so3::Rotation evaluate() const;
 
   //////////////////////////////////////////////////////////////////////////////////////////////
   /// \brief Evaluate the transformation matrix tree
@@ -55,34 +57,34 @@ class TransformStateEvaluator : public TransformEvaluator
   /// ** Note that the returned pointer belongs to the memory pool EvalTreeNode<TYPE>::pool,
   ///    and should be given back to the pool, rather than being deleted.
   //////////////////////////////////////////////////////////////////////////////////////////////
-  virtual EvalTreeNode<lgmath::se3::Transformation>* evaluateTree() const;
+  virtual EvalTreeNode<lgmath::so3::Rotation>* evaluateTree() const;
 
   //////////////////////////////////////////////////////////////////////////////////////////////
   /// \brief Evaluate the Jacobian tree
   //////////////////////////////////////////////////////////////////////////////////////////////
   virtual void appendBlockAutomaticJacobians(const Eigen::MatrixXd& lhs,
-                                             EvalTreeNode<lgmath::se3::Transformation>* evaluationTree,
+                                             EvalTreeNode<lgmath::so3::Rotation>* evaluationTree,
                                              std::vector<Jacobian<> >* outJacobians) const;
 
-  virtual void appendBlockAutomaticJacobians(const Eigen::Matrix<double,1,6>& lhs,
-                                             EvalTreeNode<lgmath::se3::Transformation>* evaluationTree,
-                                             std::vector<Jacobian<1,6> >* outJacobians) const;
+  virtual void appendBlockAutomaticJacobians(const Eigen::Matrix<double,1,3>& lhs,
+                                             EvalTreeNode<lgmath::so3::Rotation>* evaluationTree,
+                                             std::vector<Jacobian<1,3> >* outJacobians) const;
 
-  virtual void appendBlockAutomaticJacobians(const Eigen::Matrix<double,2,6>& lhs,
-                                             EvalTreeNode<lgmath::se3::Transformation>* evaluationTree,
-                                             std::vector<Jacobian<2,6> >* outJacobians) const;
+  virtual void appendBlockAutomaticJacobians(const Eigen::Matrix<double,2,3>& lhs,
+                                             EvalTreeNode<lgmath::so3::Rotation>* evaluationTree,
+                                             std::vector<Jacobian<2,3> >* outJacobians) const;
 
-  virtual void appendBlockAutomaticJacobians(const Eigen::Matrix<double,3,6>& lhs,
-                                             EvalTreeNode<lgmath::se3::Transformation>* evaluationTree,
-                                             std::vector<Jacobian<3,6> >* outJacobians) const;
+  virtual void appendBlockAutomaticJacobians(const Eigen::Matrix<double,3,3>& lhs,
+                                             EvalTreeNode<lgmath::so3::Rotation>* evaluationTree,
+                                             std::vector<Jacobian<3,3> >* outJacobians) const;
 
-  virtual void appendBlockAutomaticJacobians(const Eigen::Matrix<double,4,6>& lhs,
-                                             EvalTreeNode<lgmath::se3::Transformation>* evaluationTree,
-                                             std::vector<Jacobian<4,6> >* outJacobians) const;
+  virtual void appendBlockAutomaticJacobians(const Eigen::Matrix<double,4,3>& lhs,
+                                             EvalTreeNode<lgmath::so3::Rotation>* evaluationTree,
+                                             std::vector<Jacobian<4,3> >* outJacobians) const;
 
-  virtual void appendBlockAutomaticJacobians(const Eigen::Matrix<double,6,6>& lhs,
-                                             EvalTreeNode<lgmath::se3::Transformation>* evaluationTree,
-                                             std::vector<Jacobian<6,6> >* outJacobians) const;
+  virtual void appendBlockAutomaticJacobians(const Eigen::Matrix<double,6,3>& lhs,
+                                             EvalTreeNode<lgmath::so3::Rotation>* evaluationTree,
+                                             std::vector<Jacobian<6,3> >* outJacobians) const;
 
  private:
 
@@ -91,17 +93,17 @@ class TransformStateEvaluator : public TransformEvaluator
   //////////////////////////////////////////////////////////////////////////////////////////////
   template<int LHS_DIM, int INNER_DIM, int MAX_STATE_SIZE>
   void appendJacobiansImpl(const Eigen::Matrix<double,LHS_DIM,INNER_DIM>& lhs,
-                           EvalTreeNode<lgmath::se3::Transformation>* evaluationTree,
+                           EvalTreeNode<lgmath::so3::Rotation>* evaluationTree,
                            std::vector<Jacobian<LHS_DIM,MAX_STATE_SIZE> >* outJacobians) const;
 
   //////////////////////////////////////////////////////////////////////////////////////////////
-  /// \brief Transformation matrix state variable
+  /// \brief Rotation matrix state variable
   //////////////////////////////////////////////////////////////////////////////////////////////
-  se3::TransformStateVar::Ptr transform_;
+  RotationStateVar::Ptr rotation_;
 
 };
 
-} // se3
+} // so3
 } // steam
 
-#endif // STEAM_TRANSFORM_STATE_EVALUATOR_HPP
+#endif // STEAM_ROTATION_STATE_EVALUATOR_HPP
