@@ -3,6 +3,7 @@
 #include <Eigen/Core>
 #include <steam.hpp>
 #include <rclcpp/rclcpp.hpp>
+#include <geometry_msgs/msg/pose_with_covariance.hpp>
 
 #include <cpo_interfaces/msg/tdcp.hpp>
 
@@ -22,5 +23,7 @@ class CpoBackEnd : public rclcpp::Node {
   /** \brief Subscriber for TDCP msgs */
   rclcpp::Subscription<cpo_interfaces::msg::TDCP>::SharedPtr subscription_;
 
+  /** \brief Publisher of odometry transforms (relative vehicle frame poses) */
+  rclcpp::Publisher<geometry_msgs::msg::PoseWithCovariance>::SharedPtr publisher_;
 
 };

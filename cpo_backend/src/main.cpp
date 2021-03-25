@@ -1,5 +1,3 @@
-#include <iostream>
-
 #include <cpo_backend/CpoBackEnd.hpp>
 
 int main(int argc, char **argv) {
