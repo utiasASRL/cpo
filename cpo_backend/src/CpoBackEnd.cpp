@@ -1,4 +1,5 @@
 #include <TdcpErrorEval.hpp>
+#include <RotationStateEvaluator.hpp>
 
 #include <cpo_backend/CpoBackEnd.hpp>
 
