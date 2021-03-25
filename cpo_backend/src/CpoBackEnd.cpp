@@ -1,5 +1,15 @@
+#include <TdcpErrorEval.hpp>
 
 #include <cpo_backend/CpoBackEnd.hpp>
+
+using TransformStateVar = steam::se3::TransformStateVar;
+using TransformStateEvaluator = steam::se3::TransformStateEvaluator;
+using SteamTrajVar = steam::se3::SteamTrajVar;
+using VectorSpaceStateVar = steam::VectorSpaceStateVar;
+using PositionEvaluator = steam::se3::PositionEvaluator;
+using RotationEvaluator = steam::so3::RotationEvaluator;
+
+using RotationStateVar = steam::LieGroupStateVar<lgmath::so3::Rotation, 3>;
 
 CpoBackEnd::CpoBackEnd() : Node("cpo_back_end") {
 
@@ -30,6 +40,66 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg) {
     resetProblem();
 
     /// set up steam problem
+    // for now just using one pair of poses
+
+    Eigen::Matrix<double, 6, 1> plausible_vel;       // temporary way to initialize velocity state variable
+    plausible_vel << -0.9, 0.0, 0.0, 0.0, 0.0, 0.0;
+
+    // setup state variables using initial condition
+    std::vector<SteamTrajVar> traj_states_ic;
+    std::vector<TransformStateVar::Ptr> statevars;
+    // todo: eventually want to for loop over window
+    {
+      TransformStateVar::Ptr temp_statevar_a(new TransformStateVar());
+      TransformStateEvaluator::Ptr temp_pose_a = TransformStateEvaluator::MakeShared(temp_statevar_a);
+      VectorSpaceStateVar::Ptr temp_velocity_a = VectorSpaceStateVar::Ptr(new VectorSpaceStateVar(plausible_vel));
+      temp_statevar_a->setLock(true);   // lock the first pose (but not the first velocity)
+      SteamTrajVar temp_a(steam::Time((int64_t)msg->t_a), temp_pose_a, temp_velocity_a);
+      statevars.push_back(temp_statevar_a);
+      traj_states_ic.push_back(temp_a);
+
+      TransformStateVar::Ptr temp_statevar_b(new TransformStateVar());
+      TransformStateEvaluator::Ptr temp_pose_b = TransformStateEvaluator::MakeShared(temp_statevar_b);
+      VectorSpaceStateVar::Ptr temp_velocity_b = VectorSpaceStateVar::Ptr(new VectorSpaceStateVar(plausible_vel));
+      SteamTrajVar temp_b(steam::Time((int64_t)msg->t_b), temp_pose_b, temp_velocity_b);
+      statevars.push_back(temp_statevar_b);
+      traj_states_ic.push_back(temp_b);
+    }
+    PositionEvaluator::ConstPtr r_ba_ina
+        (new PositionEvaluator(TransformStateEvaluator::MakeShared(statevars.back())));   // todo: will eventually want several of these
+
+    // todo: set up C_ag state and RotationEvaluator
+    RotationStateVar::Ptr C_ag_statevar(new RotationStateVar());
+    RotationEvaluator::ConstPtr C_ag(new RotationEvaluator(RotationStateEvaluator::MakeShared(C_ag_statevar)));  // (?) todo
+
+
+
+    // using constant covariance here for now
+    steam::BaseNoiseModel<1>::Ptr tdcp_noise_model(new steam::StaticNoiseModel<1>(tdcp_cov_));
+
+    // iterate through satellite pairs in msg and add TDCP costs
+    for (const auto &pair : msg->pairs) {
+      Eigen::Vector3d r_1a_ing_ata{pair.r_1a_a.x, pair.r_1a_a.y, pair.r_1a_a.z};
+      Eigen::Vector3d r_1a_ing_atb{pair.r_1a_b.x, pair.r_1a_b.y, pair.r_1a_b.z};
+      Eigen::Vector3d r_2a_ing_ata{pair.r_2a_a.x, pair.r_2a_a.y, pair.r_2a_a.z};
+      Eigen::Vector3d r_2a_ing_atb{pair.r_2a_b.x, pair.r_2a_b.y, pair.r_2a_b.z};
+
+      steam::TdcpErrorEval::Ptr tdcp_error(new steam::TdcpErrorEval(pair.phi_measured,
+                                                                    r_ba_ina,
+                                                                    C_ag,
+                                                                    r_1a_ing_ata,
+                                                                    r_1a_ing_atb,
+                                                                    r_2a_ing_ata,
+                                                                    r_2a_ing_atb));
+      auto tdcp_factor = steam::WeightedLeastSqCostTerm<1, 6>::Ptr(new steam::WeightedLeastSqCostTerm<1, 6>(
+          tdcp_error,
+          tdcp_noise_model,
+          tdcp_loss_function_));
+      tdcp_cost_terms_->add(tdcp_factor);
+    }
+
+    // todo: nonholonomic cost(s)
+
 
     problem_->addCostTerm(tdcp_cost_terms_);
     problem_->addCostTerm(nonholonomic_cost_terms_);
@@ -43,8 +113,9 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg) {
     solver_->optimize();
 
     // get optimized transform and publish
-//    lgmath::se3::Transformation pose = latest_statevar->getValue();
-//    Eigen::Matrix<double, 6, 6> pose_covariance = solver_->queryCovariance(latest_statevar->getKey());
+    lgmath::se3::Transformation pose = statevars.back()->getValue();
+    auto gn_solver = std::dynamic_pointer_cast<steam::GaussNewtonSolverBase>(solver_);
+    Eigen::Matrix<double, 6, 6> pose_covariance = gn_solver->queryCovariance(statevars.back()->getKey());
 //    geometry_msgs::msg::PoseWithCovariance pose_msg = toPoseMsg(pose, pose_covariance);
 //    publisher_->publish(pose_msg);
   }
