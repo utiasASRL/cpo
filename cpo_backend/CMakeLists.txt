@@ -11,7 +11,11 @@ find_package(steam REQUIRED)
 
 find_package(cpo_interfaces)
 
-add_executable(cpo_backend src/main.cpp src/CpoBackEnd.cpp src/TdcpErrorEval.cpp)
+file(GLOB_RECURSE STEAM_EXT ${CMAKE_CURRENT_SOURCE_DIR}/src/steam_extensions/*.cpp)
+add_library(cpo_steam_extensions ${STEAM_EXT})
+target_include_directories(cpo_steam_extensions PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include/steam_extensions ${EIGEN3_INCLUDE_DIR}  ${lgmath_INCLUDE_DIRS} ${steam_INCLUDE_DIRS})
+
+add_executable(cpo_backend src/main.cpp src/CpoBackEnd.cpp src/steam_extensions/TdcpErrorEval.cpp)
 ament_target_dependencies(cpo_backend
         Eigen3
         rclcpp
@@ -20,7 +24,7 @@ ament_target_dependencies(cpo_backend
 #        steam              # this line causing /targ_PATH set to NOTFOUND error
         )
 target_include_directories(cpo_backend PUBLIC ${EIGEN3_INCLUDE_DIR} ${lgmath_INCLUDE_DIRS} ${steam_INCLUDE_DIRS} include)
-target_link_libraries(cpo_backend steam)
+target_link_libraries(cpo_backend steam cpo_steam_extensions)
 
 
 ament_package()
