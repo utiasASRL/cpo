@@ -17,6 +17,9 @@ class CpoBackEnd : public rclcpp::Node {
   /** \brief Get parameters from ROS2 and set appropriate fields */
   void getParams();
 
+  /** \brief Helper/debugger function that prints total cost and number of terms for each group of cost terms */
+  void printCosts();
+
  private:
 
   /** \brief Callback for TDCP msgs */

@@ -47,7 +47,7 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg) {
     plausible_vel << -0.9, 0.0, 0.0, 0.0, 0.0, 0.0;
 
     // setup state variables using initial condition
-    std::vector<SteamTrajVar> traj_states_ic;
+    std::vector<SteamTrajVar> traj_states;
     std::vector<TransformStateVar::Ptr> statevars;
     // todo: eventually want to for loop over window
     {
@@ -57,14 +57,14 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg) {
       temp_statevar_a->setLock(true);   // lock the first pose (but not the first velocity)
       SteamTrajVar temp_a(steam::Time((int64_t)msg->t_a), temp_pose_a, temp_velocity_a);
       statevars.push_back(temp_statevar_a);
-      traj_states_ic.push_back(temp_a);
+      traj_states.push_back(temp_a);
 
       TransformStateVar::Ptr temp_statevar_b(new TransformStateVar());
       TransformStateEvaluator::Ptr temp_pose_b = TransformStateEvaluator::MakeShared(temp_statevar_b);
       VectorSpaceStateVar::Ptr temp_velocity_b = VectorSpaceStateVar::Ptr(new VectorSpaceStateVar(plausible_vel));
       SteamTrajVar temp_b(steam::Time((int64_t)msg->t_b), temp_pose_b, temp_velocity_b);
       statevars.push_back(temp_statevar_b);
-      traj_states_ic.push_back(temp_b);
+      traj_states.push_back(temp_b);
     }
     PositionEvaluator::ConstPtr r_ba_ina
         (new PositionEvaluator(TransformStateEvaluator::MakeShared(statevars.back())));   // todo: will eventually want several of these
@@ -99,13 +99,34 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg) {
       tdcp_cost_terms_->add(tdcp_factor);
     }
 
-    // todo: nonholonomic cost(s)
+    // add nonholonomic cost(s)
+    steam::BaseNoiseModel<4>::Ptr nonholonomic_noise_model(new steam::StaticNoiseModel<4>(nonholonomic_cov_));
 
+    for (const auto &traj_state : traj_states) {
+      if (!traj_state.getVelocity()->isLocked()) {
+        steam::UnicycleErrorEval::Ptr non_holo_error_func(new steam::UnicycleErrorEval(traj_state.getVelocity()));
+        auto non_holonomic_factor = steam::WeightedLeastSqCostTerm<4, 6>::Ptr(new steam::WeightedLeastSqCostTerm<4, 6>(
+            non_holo_error_func,
+            nonholonomic_noise_model,
+            nonholonomic_loss_function_));
+        nonholonomic_cost_terms_->add(non_holonomic_factor);
 
+        // also add velocity state to problem
+        problem_->addStateVariable(traj_state.getVelocity());
+      }
+    }
 
     problem_->addCostTerm(tdcp_cost_terms_);
     problem_->addCostTerm(nonholonomic_cost_terms_);
     problem_->addCostTerm(smoothing_cost_terms_);
+
+    problem_->addStateVariable(C_ag_statevar);
+    for (const auto &state : statevars) {
+      problem_->addStateVariable(state);
+    }
+
+    // print initial costs (for debugging/development)
+    printCosts();
 
     // setup solver and optimize
     steam::DoglegGaussNewtonSolver::Params params;
@@ -113,6 +134,9 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg) {
     params.maxIterations = 5;
     solver_.reset(new steam::DoglegGaussNewtonSolver(problem_.get(), params));
     solver_->optimize();
+
+    // print final costs (for debugging/development)
+    printCosts();
 
     // get optimized transform and publish
     lgmath::se3::Transformation pose = statevars.back()->getValue();
@@ -164,4 +188,14 @@ void CpoBackEnd::resetProblem() {
 
   // set up the steam problem
   problem_.reset(new steam::OptimizationProblem());
+}
+
+void CpoBackEnd::printCosts() {
+  std::cout << " === Costs === " << std::endl;
+  std::cout << "Carrier Phase:       " << tdcp_cost_terms_->cost() << "        Terms:  "
+            << tdcp_cost_terms_->numCostTerms() << std::endl;
+  std::cout << "Nonholonomic:        " << nonholonomic_cost_terms_->cost() << "        Terms:  "
+            << nonholonomic_cost_terms_->numCostTerms() << std::endl;
+  std::cout << "Smoothing:           " << smoothing_cost_terms_->cost() << "        Terms:  "
+            << smoothing_cost_terms_->numCostTerms() << std::endl;
 }
