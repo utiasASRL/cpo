@@ -1,5 +1,6 @@
 #include <TdcpErrorEval.hpp>
 #include <RotationStateEvaluator.hpp>
+#include <UnicycleErrorEval.hpp>
 
 #include <cpo_backend/CpoBackEnd.hpp>
 
@@ -32,8 +33,6 @@ CpoBackEnd::CpoBackEnd() : Node("cpo_back_end") {
 }
 
 void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg) {
-
-  std::cout << "pass " << msg->t_a << std::endl;
 
   /// TdcpErrorEval stuff
   // todo: will have to save(?) set of ErrorEvals/costs/the problem as member of CpoBackEnd. Still need to figure out
@@ -101,6 +100,7 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg) {
     }
 
     // todo: nonholonomic cost(s)
+
 
 
     problem_->addCostTerm(tdcp_cost_terms_);
