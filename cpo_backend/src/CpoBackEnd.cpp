@@ -73,8 +73,6 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg) {
     RotationStateVar::Ptr C_ag_statevar(new RotationStateVar());
     RotationEvaluator::ConstPtr C_ag = RotationStateEvaluator::MakeShared(C_ag_statevar);
 
-
-
     // using constant covariance here for now
     steam::BaseNoiseModel<1>::Ptr tdcp_noise_model(new steam::StaticNoiseModel<1>(tdcp_cov_));
 
@@ -99,11 +97,13 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg) {
       tdcp_cost_terms_->add(tdcp_factor);
     }
 
-    // add nonholonomic cost(s)
     steam::BaseNoiseModel<4>::Ptr nonholonomic_noise_model(new steam::StaticNoiseModel<4>(nonholonomic_cov_));
+    steam::se3::SteamTrajInterface traj(smoothing_factor_information_, true);
 
+    // loop through velocity state variables
     for (const auto &traj_state : traj_states) {
       if (!traj_state.getVelocity()->isLocked()) {
+        // add nonholonomic costs
         steam::UnicycleErrorEval::Ptr non_holo_error_func(new steam::UnicycleErrorEval(traj_state.getVelocity()));
         auto non_holonomic_factor = steam::WeightedLeastSqCostTerm<4, 6>::Ptr(new steam::WeightedLeastSqCostTerm<4, 6>(
             non_holo_error_func,
@@ -111,10 +111,17 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg) {
             nonholonomic_loss_function_));
         nonholonomic_cost_terms_->add(non_holonomic_factor);
 
+        // add smoothing costs
+        steam::Time temp_time = traj_state.getTime();
+        const steam::se3::TransformEvaluator::Ptr &temp_pose = traj_state.getPose();
+        const steam::VectorSpaceStateVar::Ptr &temp_velocity = traj_state.getVelocity();
+        traj.add(temp_time, temp_pose, temp_velocity);
+
         // also add velocity state to problem
         problem_->addStateVariable(traj_state.getVelocity());
       }
     }
+    traj.appendPriorCostTerms(smoothing_cost_terms_);
 
     problem_->addCostTerm(tdcp_cost_terms_);
     problem_->addCostTerm(nonholonomic_cost_terms_);
