@@ -65,8 +65,18 @@ void RotationStateEvaluator::appendJacobiansImpl(
     const Eigen::Matrix<double,LHS_DIM,INNER_DIM>& lhs,
     EvalTreeNode<lgmath::so3::Rotation>* evaluationTree,
     std::vector<Jacobian<LHS_DIM,MAX_STATE_SIZE> >* outJacobians) const {
+
+
   if (!rotation_->isLocked()) {
-    outJacobians->push_back(Jacobian<LHS_DIM,MAX_STATE_SIZE>(rotation_->getKey(), lhs));
+    Eigen::Matrix<double,LHS_DIM,MAX_STATE_SIZE> padded_lhs;
+//    if (INNER_DIM == MAX_STATE_SIZE || LHS_DIM < 0 || INNER_DIM < 0 || MAX_STATE_SIZE < 0){   // check if we don't need to pad or dealing with dynamic matrices
+//      padded_lhs = lhs;
+//    } else {
+//      padded_lhs << lhs; //, Eigen::Matrix<double, LHS_DIM, MAX_STATE_SIZE - INNER_DIM>::Zero();
+      padded_lhs.block(0, 0, LHS_DIM, INNER_DIM) = lhs;
+//    }       // todo: not sure about any of this
+
+    outJacobians->push_back(Jacobian<LHS_DIM,MAX_STATE_SIZE>(rotation_->getKey(), padded_lhs));
   }
 }
 
@@ -81,31 +91,31 @@ void RotationStateEvaluator::appendBlockAutomaticJacobians(const Eigen::MatrixXd
 
 void RotationStateEvaluator::appendBlockAutomaticJacobians(const Eigen::Matrix<double,1,3>& lhs,
                                                             EvalTreeNode<lgmath::so3::Rotation>* evaluationTree,
-                                                            std::vector<Jacobian<1,3> >* outJacobians) const {
+                                                            std::vector<Jacobian<1,6> >* outJacobians) const {
   this->appendJacobiansImpl(lhs,evaluationTree, outJacobians);
 }
 
 void RotationStateEvaluator::appendBlockAutomaticJacobians(const Eigen::Matrix<double,2,3>& lhs,
                                                             EvalTreeNode<lgmath::so3::Rotation>* evaluationTree,
-                                                            std::vector<Jacobian<2,3> >* outJacobians) const {
+                                                            std::vector<Jacobian<2,6> >* outJacobians) const {
   this->appendJacobiansImpl(lhs,evaluationTree, outJacobians);
 }
 
 void RotationStateEvaluator::appendBlockAutomaticJacobians(const Eigen::Matrix<double,3,3>& lhs,
                                                             EvalTreeNode<lgmath::so3::Rotation>* evaluationTree,
-                                                            std::vector<Jacobian<3,3> >* outJacobians) const {
+                                                            std::vector<Jacobian<3,6> >* outJacobians) const {
   this->appendJacobiansImpl(lhs,evaluationTree, outJacobians);
 }
 
 void RotationStateEvaluator::appendBlockAutomaticJacobians(const Eigen::Matrix<double,4,3>& lhs,
                                                             EvalTreeNode<lgmath::so3::Rotation>* evaluationTree,
-                                                            std::vector<Jacobian<4,3> >* outJacobians) const {
+                                                            std::vector<Jacobian<4,6> >* outJacobians) const {
   this->appendJacobiansImpl(lhs,evaluationTree, outJacobians);
 }
 
 void RotationStateEvaluator::appendBlockAutomaticJacobians(const Eigen::Matrix<double,6,3>& lhs,
                                                             EvalTreeNode<lgmath::so3::Rotation>* evaluationTree,
-                                                            std::vector<Jacobian<6,3> >* outJacobians) const {
+                                                            std::vector<Jacobian<6,6> >* outJacobians) const {
   this->appendJacobiansImpl(lhs,evaluationTree, outJacobians);
 }
 

@@ -68,23 +68,23 @@ class RotationStateEvaluator : public RotationEvaluator
 
   virtual void appendBlockAutomaticJacobians(const Eigen::Matrix<double,1,3>& lhs,
                                              EvalTreeNode<lgmath::so3::Rotation>* evaluationTree,
-                                             std::vector<Jacobian<1,3> >* outJacobians) const;
+                                             std::vector<Jacobian<1,6> >* outJacobians) const;
 
   virtual void appendBlockAutomaticJacobians(const Eigen::Matrix<double,2,3>& lhs,
                                              EvalTreeNode<lgmath::so3::Rotation>* evaluationTree,
-                                             std::vector<Jacobian<2,3> >* outJacobians) const;
+                                             std::vector<Jacobian<2,6> >* outJacobians) const;
 
   virtual void appendBlockAutomaticJacobians(const Eigen::Matrix<double,3,3>& lhs,
                                              EvalTreeNode<lgmath::so3::Rotation>* evaluationTree,
-                                             std::vector<Jacobian<3,3> >* outJacobians) const;
+                                             std::vector<Jacobian<3,6> >* outJacobians) const;
 
   virtual void appendBlockAutomaticJacobians(const Eigen::Matrix<double,4,3>& lhs,
                                              EvalTreeNode<lgmath::so3::Rotation>* evaluationTree,
-                                             std::vector<Jacobian<4,3> >* outJacobians) const;
+                                             std::vector<Jacobian<4,6> >* outJacobians) const;
 
   virtual void appendBlockAutomaticJacobians(const Eigen::Matrix<double,6,3>& lhs,
                                              EvalTreeNode<lgmath::so3::Rotation>* evaluationTree,
-                                             std::vector<Jacobian<6,3> >* outJacobians) const;
+                                             std::vector<Jacobian<6,6> >* outJacobians) const;
 
  private:
 
