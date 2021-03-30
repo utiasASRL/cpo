@@ -17,7 +17,7 @@ int main(int argc, char **argv) {
 
   // serial port parameters
   std::string port0_path = "/dev/ttyUSB0";
-  unsigned long baud = 9600;
+  unsigned long baud = 57600;
 
 #if !FROM_FILE
   if (!fs::exists(port0_path)) {          // todo: should this warn and keep trying to connect instead?
