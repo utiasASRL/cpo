@@ -1,6 +1,7 @@
 #include <TdcpErrorEval.hpp>
 #include <RotationStateEvaluator.hpp>
 #include <UnicycleErrorEval.hpp>
+#include <RollErrorEval.hpp>
 
 #include <cpo_backend/CpoBackEnd.hpp>
 
@@ -46,12 +47,15 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg) {
     Eigen::Matrix<double, 6, 1> plausible_vel;       // temporary way to initialize velocity state variable
     plausible_vel << -0.9, 0.0, 0.0, 0.0, 0.0, 0.0;
 
+    Eigen::Matrix<double, 6, 1> plaus_Tba_vec;       // temporary way to initialize pose state variable
+    plaus_Tba_vec << 1.0, 0.0, 0.0, 0.0, 0.0, 0.0;
+
     // setup state variables using initial condition
     std::vector<SteamTrajVar> traj_states;
     std::vector<TransformStateVar::Ptr> statevars;
     // todo: eventually want to for loop over window
     {
-      TransformStateVar::Ptr temp_statevar_a(new TransformStateVar());
+      TransformStateVar::Ptr temp_statevar_a(new TransformStateVar(lgmath::se3::Transformation()));
       TransformStateEvaluator::Ptr temp_pose_a = TransformStateEvaluator::MakeShared(temp_statevar_a);
       VectorSpaceStateVar::Ptr temp_velocity_a = VectorSpaceStateVar::Ptr(new VectorSpaceStateVar(plausible_vel));
       temp_statevar_a->setLock(true);   // lock the first pose (but not the first velocity)
@@ -59,7 +63,7 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg) {
       statevars.push_back(temp_statevar_a);
       traj_states.push_back(temp_a);
 
-      TransformStateVar::Ptr temp_statevar_b(new TransformStateVar());
+      TransformStateVar::Ptr temp_statevar_b(new TransformStateVar(lgmath::se3::Transformation(plaus_Tba_vec)));
       TransformStateEvaluator::Ptr temp_pose_b = TransformStateEvaluator::MakeShared(temp_statevar_b);
       VectorSpaceStateVar::Ptr temp_velocity_b = VectorSpaceStateVar::Ptr(new VectorSpaceStateVar(plausible_vel));
       SteamTrajVar temp_b(steam::Time((int64_t)msg->t_b), temp_pose_b, temp_velocity_b);
@@ -97,6 +101,19 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg) {
       tdcp_cost_terms_->add(tdcp_factor);
     }
 
+
+    // add weak prior on initial pose to deal with roll uncertainty
+    steam::ParallelizedCostTermCollection::Ptr roll_cost_term(new steam::ParallelizedCostTermCollection());
+    steam::L2LossFunc::Ptr sharedLossFunc(new steam::L2LossFunc());
+    steam::BaseNoiseModel<1>::Ptr
+        sharedNoiseModel(new steam::StaticNoiseModel<1>(0.01 * Eigen::Matrix<double, 1, 1>::Identity()));    // todo: set up nicer
+    steam::so3::RotationStateEvaluator::Ptr
+        tmp_rot = steam::so3::RotationStateEvaluator::MakeShared(C_ag_statevar);
+    steam::RollErrorEval::Ptr prior_error_func(new steam::RollErrorEval(tmp_rot));
+    steam::WeightedLeastSqCostTerm<1, 6>::Ptr roll_prior_factor = steam::WeightedLeastSqCostTerm<1, 6>::Ptr(
+        new steam::WeightedLeastSqCostTerm<1, 6>(prior_error_func, sharedNoiseModel, sharedLossFunc));
+    roll_cost_term->add(roll_prior_factor);
+
     steam::BaseNoiseModel<4>::Ptr nonholonomic_noise_model(new steam::StaticNoiseModel<4>(nonholonomic_cov_));
     steam::se3::SteamTrajInterface traj(smoothing_factor_information_, true);
 
@@ -126,6 +143,7 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg) {
     problem_->addCostTerm(tdcp_cost_terms_);
     problem_->addCostTerm(nonholonomic_cost_terms_);
     problem_->addCostTerm(smoothing_cost_terms_);
+    problem_->addCostTerm(roll_cost_term);
 
     problem_->addStateVariable(C_ag_statevar);
     for (const auto &state : statevars) {
@@ -158,15 +176,15 @@ void CpoBackEnd::getParams() {
   // todo: eventually want to setup as ROS2 params (this->declare_parameter<...) but for now will hard code
 
   double tdcp_cov = 0.001;
-  double non_holo_y = 0.01;
-  double non_holo_z = 0.01;
-  double non_holo_roll = 0.0001;
-  double non_holo_pitch = 0.01;
+  double non_holo_y = 0.1;
+  double non_holo_z = 0.1;
+  double non_holo_roll = 0.1;
+  double non_holo_pitch = 0.1;
   double lin_acc_std_dev_x = 1.0;
   double lin_acc_std_dev_y = 0.1;
   double lin_acc_std_dev_z = 0.1;
-  double ang_acc_std_dev_x = 0.001;
-  double ang_acc_std_dev_y = 0.01;
+  double ang_acc_std_dev_x = 0.1;
+  double ang_acc_std_dev_y = 0.1;
   double ang_acc_std_dev_z = 0.1;
 
   tdcp_cov_ << tdcp_cov;
