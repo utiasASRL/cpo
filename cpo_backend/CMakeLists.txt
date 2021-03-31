@@ -15,6 +15,9 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
 
 find_package(cpo_interfaces)
 
+add_definitions(-DEIGEN_DONT_VECTORIZE=1)  # issue in ubuntu 20.04
+add_definitions(-DEIGEN_DISABLE_UNALIGNED_ARRAY_ASSERT=1)
+
 file(GLOB_RECURSE STEAM_EXT ${CMAKE_CURRENT_SOURCE_DIR}/src/steam_extensions/*.cpp)
 add_library(cpo_steam_extensions ${STEAM_EXT})
 target_include_directories(cpo_steam_extensions PUBLIC
