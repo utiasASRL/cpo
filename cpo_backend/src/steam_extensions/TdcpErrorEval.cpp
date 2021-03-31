@@ -52,13 +52,10 @@ Eigen::Matrix<double, 1, 1> TdcpErrorEval::evaluate(const Eigen::Matrix<double, 
     // Get evaluation tree
     EvalTreeHandle<Eigen::Vector3d> blkAutoEvalPosition = r_ba_ina_->getBlockAutomaticEvaluation();
 
-    // Get evaluation from tree
-    const Eigen::Vector3d &r_ba = blkAutoEvalPosition.getValue();
-
     // Get Jacobians
     Eigen::Matrix<double, 1, 3> J_1 = u_a21_.transpose() * C_ag_->evaluate().matrix().transpose();
 
-    Eigen::Matrix<double, 1, 3> newLhs = -1 * lhs * J_1;
+    Eigen::Matrix<double, 1, 3> newLhs = lhs * J_1;
     r_ba_ina_->appendBlockAutomaticJacobians(newLhs, blkAutoEvalPosition.getRoot(), jacs);
   }
 
@@ -80,7 +77,7 @@ Eigen::Matrix<double, 1, 1> TdcpErrorEval::evaluate(const Eigen::Matrix<double, 
     // Get Jacobians
     Eigen::Matrix<double, 1, 3> J_2 = u_a21_.transpose() * C_ag_->evaluate().matrix().transpose() * r_hat;
 
-    Eigen::Matrix<double, 1, 3> newLhs = -1 * lhs * J_2;
+    Eigen::Matrix<double, 1, 3> newLhs = lhs * J_2;
     C_ag_->appendBlockAutomaticJacobians(newLhs, blkAutoEvalRotation.getRoot(), jacs);
   }
 
