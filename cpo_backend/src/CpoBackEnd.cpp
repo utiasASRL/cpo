@@ -38,7 +38,10 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg) {
   /// TdcpErrorEval stuff
   // todo: will have to save(?) set of ErrorEvals/costs/the problem as member of CpoBackEnd. Still need to figure out
 
-  if ("some_condition") {
+  uint n = msg->pairs.size();
+  std::cout << "Found " << n << " sat pairs." << std::endl;
+
+  if (n >= 4) {
     resetProblem();
 
     /// set up steam problem
@@ -48,7 +51,7 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg) {
     plausible_vel << -0.9, 0.0, 0.0, 0.0, 0.0, 0.0;
 
     Eigen::Matrix<double, 6, 1> plaus_Tba_vec;       // temporary way to initialize pose state variable
-    plaus_Tba_vec << 1.0, 0.0, 0.0, 0.0, 0.0, 0.0;
+    plaus_Tba_vec << -1.0, 0.0, 0.0, 0.0, 0.0, 0.0;
 
     // setup state variables using initial condition
     std::vector<SteamTrajVar> traj_states;
@@ -74,7 +77,7 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg) {
         (new PositionEvaluator(TransformStateEvaluator::MakeShared(statevars.back())));   // todo: will eventually want several of these
 
     // set up C_ag state and RotationEvaluator
-    RotationStateVar::Ptr C_ag_statevar(new RotationStateVar());
+    RotationStateVar::Ptr C_ag_statevar(new RotationStateVar(approx_rotation_));
     RotationEvaluator::ConstPtr C_ag = RotationStateEvaluator::MakeShared(C_ag_statevar);
 
     // using constant covariance here for now
@@ -169,13 +172,22 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg) {
     Eigen::Matrix<double, 6, 6> pose_covariance = gn_solver->queryCovariance(statevars.back()->getKey());
 //    geometry_msgs::msg::PoseWithCovariance pose_msg = toPoseMsg(pose, pose_covariance);
 //    publisher_->publish(pose_msg);
+
+    std::cout << "r_ba_ina: " << pose.r_ba_ina().transpose() << std::endl;
+    std::cout << "T_ba vec: " << pose.vec().transpose() << std::endl;
+
+    // update our orientation estimate
+    approx_rotation_ = C_ag_statevar->getValue();
+
+    std::cout << "approx_rotation_ vec: " << approx_rotation_.vec().transpose() << std::endl;
+
   }
 
 }
 void CpoBackEnd::getParams() {
   // todo: eventually want to setup as ROS2 params (this->declare_parameter<...) but for now will hard code
 
-  double tdcp_cov = 0.001;
+  double tdcp_cov = 0.01;
   double non_holo_y = 0.1;
   double non_holo_z = 0.1;
   double non_holo_roll = 0.1;

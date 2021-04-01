@@ -92,7 +92,7 @@ int main(int argc, char **argv) {
         }
 
         // perform TDCP
-        if (node.prev_sats->size() >= 2) {
+        if (node.prev_sats->size() >= 2 && node.enu_origin_set) {
           // iterate through map to find common satellites
           std::vector<int> matches;
           for (auto &[id, curr_sat] : *node.curr_sats) {

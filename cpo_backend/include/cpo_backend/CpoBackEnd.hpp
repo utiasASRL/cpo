@@ -65,4 +65,7 @@ class CpoBackEnd : public rclcpp::Node {
 
   Eigen::Matrix<double, 4, 4> nonholonomic_cov_;
 
+  /** \brief Our estimate of C_ag, stored to initialize the next optimization problem */
+  lgmath::so3::Rotation approx_rotation_;
+
 };

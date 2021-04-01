@@ -68,8 +68,8 @@ void CpoFrontEnd::setEnuOrigin(double *rr) {
   C_enu_ecef_ << C[0], C[3], C[6], C[1], C[4], C[7], C[2], C[5], C[8];
   enu_origin_set = true;
 
-  std::cout << "ENU origin set to " << geo_init[0] * R2D << " deg lat, " << geo_init[1] * R2D << " deg lat, "
-            << geo_init[2] << " m alt." << std::endl;
+  std::cout << "ENU origin set to " << std::setprecision(10) << geo_init[0] * R2D << " deg lat, " << geo_init[1] * R2D << " deg lat, "
+      << std::setprecision(6) << geo_init[2] << " m alt." << std::endl;
 }
 
 void CpoFrontEnd::updateCodePos(double *rr) {
