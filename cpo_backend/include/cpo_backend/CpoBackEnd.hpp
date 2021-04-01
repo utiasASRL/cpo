@@ -50,11 +50,17 @@ class CpoBackEnd : public rclcpp::Node {
   /** \brief Cost terms associated with white-noise-on-acceleration motion prior */
   steam::ParallelizedCostTermCollection::Ptr smoothing_cost_terms_;
 
+  /** \brief Cost term for prior on C_ag roll */
+  steam::WeightedLeastSqCostTerm<1, 6>::Ptr roll_cost_term_;
+
   /** \brief Loss function associated with TDCP costs */
   steam::LossFunctionBase::Ptr tdcp_loss_function_;
 
   /** \brief Loss function associated with nonholonomic costs */
   steam::LossFunctionBase::Ptr nonholonomic_loss_function_;
+
+  /** \brief Loss function associated with roll prior */
+  steam::LossFunctionBase::Ptr roll_loss_function_;
 
   /** \brief The steam trajectory, allows smoothing factors, velocity priors and pose extrapolation */
   std::shared_ptr<steam::se3::SteamTrajInterface> trajectory_;
@@ -64,6 +70,8 @@ class CpoBackEnd : public rclcpp::Node {
   Eigen::Matrix<double, 1, 1> tdcp_cov_;
 
   Eigen::Matrix<double, 4, 4> nonholonomic_cov_;
+
+  Eigen::Matrix<double, 1, 1> roll_cov_;
 
   /** \brief Our estimate of C_ag, stored to initialize the next optimization problem */
   lgmath::so3::Rotation approx_rotation_;

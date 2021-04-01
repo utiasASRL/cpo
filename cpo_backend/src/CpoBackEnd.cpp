@@ -104,18 +104,11 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg) {
       tdcp_cost_terms_->add(tdcp_factor);
     }
 
-
     // add weak prior on initial pose to deal with roll uncertainty
-    steam::ParallelizedCostTermCollection::Ptr roll_cost_term(new steam::ParallelizedCostTermCollection());
-    steam::L2LossFunc::Ptr sharedLossFunc(new steam::L2LossFunc());
-    steam::BaseNoiseModel<1>::Ptr
-        sharedNoiseModel(new steam::StaticNoiseModel<1>(0.01 * Eigen::Matrix<double, 1, 1>::Identity()));    // todo: set up nicer
-    steam::so3::RotationStateEvaluator::Ptr
-        tmp_rot = steam::so3::RotationStateEvaluator::MakeShared(C_ag_statevar);
-    steam::RollErrorEval::Ptr prior_error_func(new steam::RollErrorEval(tmp_rot));
-    steam::WeightedLeastSqCostTerm<1, 6>::Ptr roll_prior_factor = steam::WeightedLeastSqCostTerm<1, 6>::Ptr(
-        new steam::WeightedLeastSqCostTerm<1, 6>(prior_error_func, sharedNoiseModel, sharedLossFunc));
-    roll_cost_term->add(roll_prior_factor);
+    steam::BaseNoiseModel<1>::Ptr roll_noise_model(new steam::StaticNoiseModel<1>(roll_cov_));
+    RotationStateEvaluator::Ptr tmp_rot = RotationStateEvaluator::MakeShared(C_ag_statevar);
+    steam::RollErrorEval::Ptr roll_error_func(new steam::RollErrorEval(tmp_rot));
+    roll_cost_term_.reset(new steam::WeightedLeastSqCostTerm<1, 6>(roll_error_func, roll_noise_model, roll_loss_function_));
 
     steam::BaseNoiseModel<4>::Ptr nonholonomic_noise_model(new steam::StaticNoiseModel<4>(nonholonomic_cov_));
     steam::se3::SteamTrajInterface traj(smoothing_factor_information_, true);
@@ -146,7 +139,7 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg) {
     problem_->addCostTerm(tdcp_cost_terms_);
     problem_->addCostTerm(nonholonomic_cost_terms_);
     problem_->addCostTerm(smoothing_cost_terms_);
-    problem_->addCostTerm(roll_cost_term);
+    problem_->addCostTerm(roll_cost_term_);
 
     problem_->addStateVariable(C_ag_statevar);
     for (const auto &state : statevars) {
@@ -198,6 +191,7 @@ void CpoBackEnd::getParams() {
   double ang_acc_std_dev_x = 0.1;
   double ang_acc_std_dev_y = 0.1;
   double ang_acc_std_dev_z = 0.1;
+  double roll_cov = 0.01;
 
   tdcp_cov_ << tdcp_cov;
 
@@ -211,12 +205,15 @@ void CpoBackEnd::getParams() {
       ang_acc_std_dev_x, ang_acc_std_dev_y, ang_acc_std_dev_z;
   smoothing_factor_information_.setZero();
   smoothing_factor_information_.diagonal() = 1.0 / Qc_diag;
+
+  roll_cov_ << roll_cov;
 }
 
 void CpoBackEnd::resetProblem() {
   // setup loss functions
-  tdcp_loss_function_.reset(new steam::DcsLossFunc(2.0));
+  tdcp_loss_function_.reset(new steam::DcsLossFunc(2.0));   // todo: try different loss functions
   nonholonomic_loss_function_.reset(new steam::L2LossFunc());
+  roll_loss_function_.reset(new steam::L2LossFunc());
 
   // setup cost terms
   tdcp_cost_terms_.reset(new steam::ParallelizedCostTermCollection());
@@ -235,4 +232,5 @@ void CpoBackEnd::printCosts() {
             << nonholonomic_cost_terms_->numCostTerms() << std::endl;
   std::cout << "Smoothing:           " << smoothing_cost_terms_->cost() << "        Terms:  "
             << smoothing_cost_terms_->numCostTerms() << std::endl;
+  std::cout << "Roll Prior:          " << roll_cost_term_->cost() << "        Terms:  1" << std::endl;
 }
