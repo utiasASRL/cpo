@@ -41,6 +41,12 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg) {
   uint n = msg->pairs.size();
   std::cout << "Found " << n << " sat pairs." << std::endl;
 
+  addMsgToWindow(msg);
+
+  // don't attempt optimization if we don't have a full window
+  if (msgs_.size() < window_size_)
+    return;
+
   if (n >= 4) {
     resetProblem();
 
@@ -192,6 +198,7 @@ void CpoBackEnd::getParams() {
   double ang_acc_std_dev_y = 0.1;
   double ang_acc_std_dev_z = 0.1;
   double roll_cov = 0.01;
+  uint window_size = 10;
 
   tdcp_cov_ << tdcp_cov;
 
@@ -207,6 +214,8 @@ void CpoBackEnd::getParams() {
   smoothing_factor_information_.diagonal() = 1.0 / Qc_diag;
 
   roll_cov_ << roll_cov;
+
+  window_size_ = window_size;
 }
 
 void CpoBackEnd::resetProblem() {
@@ -233,4 +242,22 @@ void CpoBackEnd::printCosts() {
   std::cout << "Smoothing:           " << smoothing_cost_terms_->cost() << "        Terms:  "
             << smoothing_cost_terms_->numCostTerms() << std::endl;
   std::cout << "Roll Prior:          " << roll_cost_term_->cost() << "        Terms:  1" << std::endl;
+}
+
+void CpoBackEnd::addMsgToWindow(const cpo_interfaces::msg::TDCP::SharedPtr &msg) {
+
+  if (!msgs_.empty() && msg->t_a != msgs_.back().t_b) {
+    // times don't align, so we've likely missed a msg. To be safe we will clear it for now
+    std::cout << "Warning: mismatched times. Clearing msgs_. Current t_a: " << msg->t_a << ". Previous t_b: "
+              << msgs_.back().t_b << std::endl;
+    std::queue<cpo_interfaces::msg::TDCP>().swap(msgs_);
+  }
+
+  // add latest message
+  msgs_.push(*msg);
+
+  // if we have a full queue, discard the oldest msg
+  while (msgs_.size() > window_size_) {
+    msgs_.pop();
+  }
 }

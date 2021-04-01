@@ -7,6 +7,8 @@
 
 #include <cpo_interfaces/msg/tdcp.hpp>
 
+#include <queue>
+
 /** \brief Class that subscribes to TDCP pseudo-measurements and outputs odometry estimates */
 class CpoBackEnd : public rclcpp::Node {
  public:
@@ -26,6 +28,9 @@ class CpoBackEnd : public rclcpp::Node {
   void _tdcpCallback(cpo_interfaces::msg::TDCP::SharedPtr msg);
 
   void resetProblem();
+
+  /** \brief Store TDCP msg in our queue. Also checks times for dropped msgs */
+  void addMsgToWindow(const cpo_interfaces::msg::TDCP::SharedPtr& msg);
 
   /** \brief Subscriber for TDCP msgs */
   rclcpp::Subscription<cpo_interfaces::msg::TDCP>::SharedPtr subscription_;
@@ -75,5 +80,11 @@ class CpoBackEnd : public rclcpp::Node {
 
   /** \brief Our estimate of C_ag, stored to initialize the next optimization problem */
   lgmath::so3::Rotation approx_rotation_;
+
+  /** \brief Store a window of TDCP messages */
+  std::queue<cpo_interfaces::msg::TDCP> msgs_;
+
+  /** \brief Size of the optimization window in msgs */
+  uint window_size_;
 
 };
