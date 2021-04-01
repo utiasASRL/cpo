@@ -1,19 +1,17 @@
 #pragma once
 
 #include <steam.hpp>
-#include <RotationEvaluator.hpp>
 
 namespace steam {
 
 /** \brief Time-Differenced Carrier Phase Error Evaluator for STEAM optimization */
-class TdcpErrorEval : public ErrorEvaluator<1, 6>::type {     // todo: not sure if this is still 6
+class TdcpErrorEval : public ErrorEvaluator<1, 6>::type {
  public:
 
   /** \brief Constructor */
-  TdcpErrorEval(double phi_dd,
+  TdcpErrorEval(const double phi_dd,
                 se3::PositionEvaluator::ConstPtr& r_ba_ina,
-                so3::RotationEvaluator::ConstPtr& C_ag,             // temporary
-//                so3::ComposeRotationEvaluator::ConstPtr& C_ag,   //todo: need to make this
+                se3::TransformEvaluator::ConstPtr& T_ag,
                 const Eigen::Vector3d& r_1a_ing_ata,
                 const Eigen::Vector3d& r_1a_ing_atb,
                 const Eigen::Vector3d& r_2a_ing_ata,
@@ -38,7 +36,7 @@ class TdcpErrorEval : public ErrorEvaluator<1, 6>::type {     // todo: not sure 
   se3::PositionEvaluator::ConstPtr r_ba_ina_;
 
   /** Estimated rotation between the vehicle frame at a and the ENU frame */
-  so3::RotationEvaluator::ConstPtr& C_ag_;
+  se3::TransformEvaluator::ConstPtr& T_ag_;
 
   /** Vector to satellite 1 from position a at time a in ENU frame */
   const Eigen::Vector3d r_1a_ing_ata_;

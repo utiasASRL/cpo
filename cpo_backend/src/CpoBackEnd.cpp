@@ -1,19 +1,14 @@
 #include <TdcpErrorEval.hpp>
-#include <RotationStateEvaluator.hpp>
 #include <UnicycleErrorEval.hpp>
-#include <RollErrorEval.hpp>
 
 #include <cpo_backend/CpoBackEnd.hpp>
 
 using TransformStateVar = steam::se3::TransformStateVar;
 using TransformStateEvaluator = steam::se3::TransformStateEvaluator;
+using TransformEvaluator = steam::se3::TransformEvaluator;
 using SteamTrajVar = steam::se3::SteamTrajVar;
 using VectorSpaceStateVar = steam::VectorSpaceStateVar;
 using PositionEvaluator = steam::se3::PositionEvaluator;
-using RotationEvaluator = steam::so3::RotationEvaluator;
-using RotationStateEvaluator = steam::so3::RotationStateEvaluator;
-
-using RotationStateVar = steam::LieGroupStateVar<lgmath::so3::Rotation, 3>;
 
 CpoBackEnd::CpoBackEnd() : Node("cpo_back_end") {
 
@@ -82,9 +77,11 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg) {
     PositionEvaluator::ConstPtr r_ba_ina
         (new PositionEvaluator(TransformStateEvaluator::MakeShared(statevars.back())));   // todo: will eventually want several of these
 
-    // set up C_ag state and RotationEvaluator
-    RotationStateVar::Ptr C_ag_statevar(new RotationStateVar(approx_rotation_));
-    RotationEvaluator::ConstPtr C_ag = RotationStateEvaluator::MakeShared(C_ag_statevar);
+    // set up T_0g state
+    TransformStateVar::Ptr T_0g_statevar(new TransformStateVar(init_pose_));
+    TransformEvaluator::ConstPtr T_0g = TransformStateEvaluator::MakeShared(T_0g_statevar);
+
+    // todo: T_0g ==> T_kg via ComposeTransformEval
 
     // using constant covariance here for now
     steam::BaseNoiseModel<1>::Ptr tdcp_noise_model(new steam::StaticNoiseModel<1>(tdcp_cov_));
@@ -98,7 +95,7 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg) {
 
       steam::TdcpErrorEval::Ptr tdcp_error(new steam::TdcpErrorEval(pair.phi_measured,
                                                                     r_ba_ina,
-                                                                    C_ag,
+                                                                    T_0g,     // todo: technically this is T_kg
                                                                     r_1a_ing_ata,
                                                                     r_1a_ing_atb,
                                                                     r_2a_ing_ata,
@@ -111,10 +108,23 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg) {
     }
 
     // add weak prior on initial pose to deal with roll uncertainty
-    steam::BaseNoiseModel<1>::Ptr roll_noise_model(new steam::StaticNoiseModel<1>(roll_cov_));
-    RotationStateEvaluator::Ptr tmp_rot = RotationStateEvaluator::MakeShared(C_ag_statevar);
-    steam::RollErrorEval::Ptr roll_error_func(new steam::RollErrorEval(tmp_rot));
-    roll_cost_term_.reset(new steam::WeightedLeastSqCostTerm<1, 6>(roll_error_func, roll_noise_model, roll_loss_function_));
+    steam::BaseNoiseModel<6>::Ptr
+        sharedNoiseModel(new steam::StaticNoiseModel<6>(roll_cov_ * Eigen::Matrix<double, 6, 6>::Identity()));
+    steam::TransformErrorEval::Ptr prior_error_func(new steam::TransformErrorEval(init_pose_, T_0g));
+    pose_prior_cost_ = steam::WeightedLeastSqCostTerm<6, 6>::Ptr(new steam::WeightedLeastSqCostTerm<6, 6>(
+        prior_error_func,
+        sharedNoiseModel,
+        roll_loss_function_));
+
+    // set up loss, noise model for unary factor to constrain r^0g_g to zero
+    steam::L2LossFunc::Ptr position_loss_func(new steam::L2LossFunc());
+    auto position_cov = 0.00005 * Eigen::Matrix<double, 3, 3>::Identity();
+    steam::BaseNoiseModel<3>::Ptr position_noise_model(new steam::StaticNoiseModel<3>(position_cov));
+    steam::PositionErrorEval::Ptr position_error_func(new steam::PositionErrorEval(T_0g));
+    position_cost_ =
+        steam::WeightedLeastSqCostTerm<3, 6>::Ptr(new steam::WeightedLeastSqCostTerm<3, 6>(position_error_func,
+                                                                                           position_noise_model,
+                                                                                           position_loss_func));
 
     steam::BaseNoiseModel<4>::Ptr nonholonomic_noise_model(new steam::StaticNoiseModel<4>(nonholonomic_cov_));
     steam::se3::SteamTrajInterface traj(smoothing_factor_information_, true);
@@ -132,7 +142,7 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg) {
 
         // add smoothing costs
         steam::Time temp_time = traj_state.getTime();
-        const steam::se3::TransformEvaluator::Ptr &temp_pose = traj_state.getPose();
+        const TransformEvaluator::Ptr &temp_pose = traj_state.getPose();
         const steam::VectorSpaceStateVar::Ptr &temp_velocity = traj_state.getVelocity();
         traj.add(temp_time, temp_pose, temp_velocity);
 
@@ -145,9 +155,10 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg) {
     problem_->addCostTerm(tdcp_cost_terms_);
     problem_->addCostTerm(nonholonomic_cost_terms_);
     problem_->addCostTerm(smoothing_cost_terms_);
-    problem_->addCostTerm(roll_cost_term_);
+    problem_->addCostTerm(pose_prior_cost_);
+    problem_->addCostTerm(position_cost_);
 
-    problem_->addStateVariable(C_ag_statevar);
+    problem_->addStateVariable(T_0g_statevar);
     for (const auto &state : statevars) {
       problem_->addStateVariable(state);
     }
@@ -176,9 +187,9 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg) {
     std::cout << "T_ba vec: " << pose.vec().transpose() << std::endl;
 
     // update our orientation estimate
-    approx_rotation_ = C_ag_statevar->getValue();
+    init_pose_ = T_0g_statevar->getValue();   // todo: may need to update
 
-    std::cout << "approx_rotation_ vec: " << approx_rotation_.vec().transpose() << std::endl;
+    std::cout << "init_pose_ vec: " << init_pose_.vec().transpose() << std::endl;
 
   }
 
@@ -197,7 +208,7 @@ void CpoBackEnd::getParams() {
   double ang_acc_std_dev_x = 0.1;
   double ang_acc_std_dev_y = 0.1;
   double ang_acc_std_dev_z = 0.1;
-  double roll_cov = 0.01;
+  double roll_cov = 0.1;
   uint window_size = 10;
 
   tdcp_cov_ << tdcp_cov;
@@ -213,7 +224,7 @@ void CpoBackEnd::getParams() {
   smoothing_factor_information_.setZero();
   smoothing_factor_information_.diagonal() = 1.0 / Qc_diag;
 
-  roll_cov_ << roll_cov;
+  roll_cov_ = roll_cov;
 
   window_size_ = window_size;
 }
@@ -241,7 +252,8 @@ void CpoBackEnd::printCosts() {
             << nonholonomic_cost_terms_->numCostTerms() << std::endl;
   std::cout << "Smoothing:           " << smoothing_cost_terms_->cost() << "        Terms:  "
             << smoothing_cost_terms_->numCostTerms() << std::endl;
-  std::cout << "Roll Prior:          " << roll_cost_term_->cost() << "        Terms:  1" << std::endl;
+  std::cout << "Roll Prior:          " << pose_prior_cost_->cost() << "        Terms:  1" << std::endl;
+  std::cout << "Position Prior:      " << position_cost_->cost() << "        Terms:  1" << std::endl;
 }
 
 void CpoBackEnd::addMsgToWindow(const cpo_interfaces::msg::TDCP::SharedPtr &msg) {
