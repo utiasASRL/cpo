@@ -32,6 +32,10 @@ class CpoBackEnd : public rclcpp::Node {
   /** \brief Store TDCP msg in our queue. Also checks times for dropped msgs */
   void addMsgToWindow(const cpo_interfaces::msg::TDCP::SharedPtr& msg);
 
+  /** \brief Helper to convert lgmath Transform to ROS2 msg */
+  static geometry_msgs::msg::PoseWithCovariance toPoseMsg(const lgmath::se3::Transformation& T,
+                                                   const Eigen::Matrix<double, 6, 6>& cov);
+
   /** \brief Subscriber for TDCP msgs */
   rclcpp::Subscription<cpo_interfaces::msg::TDCP>::SharedPtr subscription_;
 

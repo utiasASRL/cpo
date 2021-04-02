@@ -180,8 +180,8 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg) {
     lgmath::se3::Transformation pose = statevars.back()->getValue();
     auto gn_solver = std::dynamic_pointer_cast<steam::GaussNewtonSolverBase>(solver_);
     Eigen::Matrix<double, 6, 6> pose_covariance = gn_solver->queryCovariance(statevars.back()->getKey());
-//    geometry_msgs::msg::PoseWithCovariance pose_msg = toPoseMsg(pose, pose_covariance);
-//    publisher_->publish(pose_msg);
+    geometry_msgs::msg::PoseWithCovariance pose_msg = toPoseMsg(pose, pose_covariance);
+    publisher_->publish(pose_msg);
 
     std::cout << "r_ba_ina: " << pose.r_ba_ina().transpose() << std::endl;
     std::cout << "T_ba vec: " << pose.vec().transpose() << std::endl;
@@ -272,4 +272,25 @@ void CpoBackEnd::addMsgToWindow(const cpo_interfaces::msg::TDCP::SharedPtr &msg)
   while (msgs_.size() > window_size_) {
     msgs_.pop();
   }
+}
+
+geometry_msgs::msg::PoseWithCovariance CpoBackEnd::toPoseMsg(const lgmath::se3::Transformation &T,
+                                                             const Eigen::Matrix<double, 6, 6> &cov) {
+  Eigen::Quaterniond q(T.matrix().topLeftCorner<3, 3>());
+  Eigen::Vector3d r = T.matrix().topRightCorner<3, 1>();
+
+  geometry_msgs::msg::PoseWithCovariance msg;
+  msg.pose.position.set__x(r[0]);
+  msg.pose.position.set__y(r[1]);
+  msg.pose.position.set__z(r[2]);
+  msg.pose.orientation.set__x(q.x());
+  msg.pose.orientation.set__y(q.y());
+  msg.pose.orientation.set__z(q.z());
+  msg.pose.orientation.set__w(q.w());
+
+  std::array<double, 36> temp{};
+  Eigen::Matrix<double, 6, 6>::Map(temp.data()) = cov;  // todo: not sure if this cov is valid
+  msg.set__covariance(temp);
+
+  return msg;
 }
