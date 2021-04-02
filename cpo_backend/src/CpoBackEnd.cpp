@@ -28,15 +28,12 @@ CpoBackEnd::CpoBackEnd() : Node("cpo_back_end") {
   getParams();
 }
 
-void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg) {
+void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in) {
 
-  /// TdcpErrorEval stuff
-  // todo: will have to save(?) set of ErrorEvals/costs/the problem as member of CpoBackEnd. Still need to figure out
-
-  uint n = msg->pairs.size();
+  uint n = msg_in->pairs.size();
   std::cout << "Found " << n << " sat pairs." << std::endl;
 
-  addMsgToWindow(msg);
+  addMsgToWindow(msg_in);
 
   // don't attempt optimization if we don't have a full window
   if (msgs_.size() < window_size_)
@@ -45,66 +42,78 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg) {
   if (n >= 4) {
     resetProblem();
 
-    /// set up steam problem
-    // for now just using one pair of poses
+    // set up steam problem
 
     Eigen::Matrix<double, 6, 1> plausible_vel;       // temporary way to initialize velocity state variable
     plausible_vel << -0.9, 0.0, 0.0, 0.0, 0.0, 0.0;
 
-    Eigen::Matrix<double, 6, 1> plaus_Tba_vec;       // temporary way to initialize pose state variable
-    plaus_Tba_vec << -1.0, 0.0, 0.0, 0.0, 0.0, 0.0;
-
     // setup state variables using initial condition
     std::vector<SteamTrajVar> traj_states;
     std::vector<TransformStateVar::Ptr> statevars;
-    // todo: eventually want to for loop over window
-    {
+
+    // keep track of states composed with frame transform for use in TDCP terms
+    std::vector<TransformEvaluator::ConstPtr> enu_poses;
+
+    { // first pose in window gets locked
       TransformStateVar::Ptr temp_statevar_a(new TransformStateVar(lgmath::se3::Transformation()));
       TransformStateEvaluator::Ptr temp_pose_a = TransformStateEvaluator::MakeShared(temp_statevar_a);
       VectorSpaceStateVar::Ptr temp_velocity_a = VectorSpaceStateVar::Ptr(new VectorSpaceStateVar(plausible_vel));
       temp_statevar_a->setLock(true);   // lock the first pose (but not the first velocity)
-      SteamTrajVar temp_a(steam::Time((int64_t)msg->t_a), temp_pose_a, temp_velocity_a);
+      SteamTrajVar temp_a(steam::Time((int64_t)msgs_.front().t_a), temp_pose_a, temp_velocity_a);
       statevars.push_back(temp_statevar_a);
       traj_states.push_back(temp_a);
 
-      TransformStateVar::Ptr temp_statevar_b(new TransformStateVar(lgmath::se3::Transformation(plaus_Tba_vec)));
-      TransformStateEvaluator::Ptr temp_pose_b = TransformStateEvaluator::MakeShared(temp_statevar_b);
-      VectorSpaceStateVar::Ptr temp_velocity_b = VectorSpaceStateVar::Ptr(new VectorSpaceStateVar(plausible_vel));
-      SteamTrajVar temp_b(steam::Time((int64_t)msg->t_b), temp_pose_b, temp_velocity_b);
-      statevars.push_back(temp_statevar_b);
-      traj_states.push_back(temp_b);
+      enu_poses.emplace_back(temp_pose_a);
     }
-    PositionEvaluator::ConstPtr r_ba_ina
-        (new PositionEvaluator(TransformStateEvaluator::MakeShared(statevars.back())));   // todo: will eventually want several of these
 
     // set up T_0g state
     TransformStateVar::Ptr T_0g_statevar(new TransformStateVar(init_pose_));
     TransformEvaluator::ConstPtr T_0g = TransformStateEvaluator::MakeShared(T_0g_statevar);
 
-    // todo: T_0g ==> T_kg via ComposeTransformEval
+    // loop over window to add states for other poses
+    for (uint i = 0; i < msgs_.size(); ++i) {
+      Eigen::Matrix<double, 6, 1> plaus_Tba_vec;       // temporary way to initialize pose state variable
+      plaus_Tba_vec << -1.0 * (i + 1), 0.0, 0.0, 0.0, 0.0, 0.0;
 
-    // using constant covariance here for now
-    steam::BaseNoiseModel<1>::Ptr tdcp_noise_model(new steam::StaticNoiseModel<1>(tdcp_cov_));
+      TransformStateVar::Ptr temp_statevar(new TransformStateVar(lgmath::se3::Transformation(plaus_Tba_vec)));
+      TransformStateEvaluator::Ptr temp_pose = TransformStateEvaluator::MakeShared(temp_statevar);
+      VectorSpaceStateVar::Ptr temp_velocity = VectorSpaceStateVar::Ptr(new VectorSpaceStateVar(plausible_vel));
+      SteamTrajVar temp(steam::Time((int64_t)msgs_[i].t_b), temp_pose, temp_velocity);
+      statevars.push_back(temp_statevar);
+      traj_states.push_back(temp);
 
-    // iterate through satellite pairs in msg and add TDCP costs
-    for (const auto &pair : msg->pairs) {
-      Eigen::Vector3d r_1a_ing_ata{pair.r_1a_a.x, pair.r_1a_a.y, pair.r_1a_a.z};
-      Eigen::Vector3d r_1a_ing_atb{pair.r_1a_b.x, pair.r_1a_b.y, pair.r_1a_b.z};
-      Eigen::Vector3d r_2a_ing_ata{pair.r_2a_a.x, pair.r_2a_a.y, pair.r_2a_a.z};
-      Eigen::Vector3d r_2a_ing_atb{pair.r_2a_b.x, pair.r_2a_b.y, pair.r_2a_b.z};
+      enu_poses.emplace_back(temp_pose);
+    }
 
-      steam::TdcpErrorEval::Ptr tdcp_error(new steam::TdcpErrorEval(pair.phi_measured,
-                                                                    r_ba_ina,
-                                                                    T_0g,     // todo: technically this is T_kg
-                                                                    r_1a_ing_ata,
-                                                                    r_1a_ing_atb,
-                                                                    r_2a_ing_ata,
-                                                                    r_2a_ing_atb));
-      auto tdcp_factor = steam::WeightedLeastSqCostTerm<1, 6>::Ptr(new steam::WeightedLeastSqCostTerm<1, 6>(
-          tdcp_error,
-          tdcp_noise_model,
-          tdcp_loss_function_));
-      tdcp_cost_terms_->add(tdcp_factor);
+    // add TDCP terms
+    for (uint k = 0; k < msgs_.size(); ++k) {
+
+      TransformEvaluator::ConstPtr T_k1k = steam::se3::compose(enu_poses[k + 1], steam::se3::inverse(enu_poses[k]));
+      PositionEvaluator::ConstPtr r_ba_ina(new PositionEvaluator(T_k1k));
+
+      // using constant covariance here for now
+      steam::BaseNoiseModel<1>::Ptr tdcp_noise_model(new steam::StaticNoiseModel<1>(tdcp_cov_));
+
+      // iterate through satellite pairs in msg and add TDCP costs
+      for (const auto &pair : msgs_[k].pairs) {
+        Eigen::Vector3d r_1a_ing_ata{pair.r_1a_a.x, pair.r_1a_a.y, pair.r_1a_a.z};
+        Eigen::Vector3d r_1a_ing_atb{pair.r_1a_b.x, pair.r_1a_b.y, pair.r_1a_b.z};
+        Eigen::Vector3d r_2a_ing_ata{pair.r_2a_a.x, pair.r_2a_a.y, pair.r_2a_a.z};
+        Eigen::Vector3d r_2a_ing_atb{pair.r_2a_b.x, pair.r_2a_b.y, pair.r_2a_b.z};
+
+        steam::TdcpErrorEval::Ptr tdcp_error(new steam::TdcpErrorEval(pair.phi_measured,
+                                                                      r_ba_ina,
+                                                                      enu_poses[k],   // T_kg
+                                                                      r_1a_ing_ata,
+                                                                      r_1a_ing_atb,
+                                                                      r_2a_ing_ata,
+                                                                      r_2a_ing_atb));
+        auto tdcp_factor = steam::WeightedLeastSqCostTerm<1, 6>::Ptr(new steam::WeightedLeastSqCostTerm<1, 6>(
+            tdcp_error,
+            tdcp_noise_model,
+            tdcp_loss_function_));
+        tdcp_cost_terms_->add(tdcp_factor);
+      }
     }
 
     // add weak prior on initial pose to deal with roll uncertainty
@@ -262,15 +271,15 @@ void CpoBackEnd::addMsgToWindow(const cpo_interfaces::msg::TDCP::SharedPtr &msg)
     // times don't align, so we've likely missed a msg. To be safe we will clear it for now
     std::cout << "Warning: mismatched times. Clearing msgs_. Current t_a: " << msg->t_a << ". Previous t_b: "
               << msgs_.back().t_b << std::endl;
-    std::queue<cpo_interfaces::msg::TDCP>().swap(msgs_);
+    std::deque<cpo_interfaces::msg::TDCP>().swap(msgs_);
   }
 
   // add latest message
-  msgs_.push(*msg);
+  msgs_.push_back(*msg);
 
   // if we have a full queue, discard the oldest msg
   while (msgs_.size() > window_size_) {
-    msgs_.pop();
+    msgs_.pop_front();
   }
 }
 

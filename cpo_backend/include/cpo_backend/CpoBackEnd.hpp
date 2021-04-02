@@ -7,7 +7,7 @@
 
 #include <cpo_interfaces/msg/tdcp.hpp>
 
-#include <queue>
+#include <deque>
 
 /** \brief Class that subscribes to TDCP pseudo-measurements and outputs odometry estimates */
 class CpoBackEnd : public rclcpp::Node {
@@ -25,7 +25,7 @@ class CpoBackEnd : public rclcpp::Node {
  private:
 
   /** \brief Callback for TDCP msgs */
-  void _tdcpCallback(cpo_interfaces::msg::TDCP::SharedPtr msg);
+  void _tdcpCallback(cpo_interfaces::msg::TDCP::SharedPtr msg_in);
 
   void resetProblem();
 
@@ -88,8 +88,8 @@ class CpoBackEnd : public rclcpp::Node {
   /** \brief Our estimate of T_ag, stored to initialize the next optimization problem */
   lgmath::se3::Transformation init_pose_;     // todo: not sure if we still need
 
-  /** \brief Store a window of TDCP messages */
-  std::queue<cpo_interfaces::msg::TDCP> msgs_;
+  /** \brief Store a window of TDCP messages. We use deque over queue to get access */
+  std::deque<cpo_interfaces::msg::TDCP> msgs_;
 
   /** \brief Size of the optimization window in msgs */
   uint window_size_;
