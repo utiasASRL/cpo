@@ -7,7 +7,7 @@
 
 #include <cpo_interfaces/msg/tdcp.hpp>
 
-#include <queue>
+#include <deque>
 
 /** \brief Class that subscribes to TDCP pseudo-measurements and outputs odometry estimates */
 class CpoBackEnd : public rclcpp::Node {
@@ -25,12 +25,16 @@ class CpoBackEnd : public rclcpp::Node {
  private:
 
   /** \brief Callback for TDCP msgs */
-  void _tdcpCallback(cpo_interfaces::msg::TDCP::SharedPtr msg);
+  void _tdcpCallback(cpo_interfaces::msg::TDCP::SharedPtr msg_in);
 
   void resetProblem();
 
   /** \brief Store TDCP msg in our queue. Also checks times for dropped msgs */
   void addMsgToWindow(const cpo_interfaces::msg::TDCP::SharedPtr& msg);
+
+  /** \brief Helper to convert lgmath Transform to ROS2 msg */
+  static geometry_msgs::msg::PoseWithCovariance toPoseMsg(const lgmath::se3::Transformation& T,
+                                                   const Eigen::Matrix<double, 6, 6>& cov);
 
   /** \brief Subscriber for TDCP msgs */
   rclcpp::Subscription<cpo_interfaces::msg::TDCP>::SharedPtr subscription_;
@@ -55,8 +59,11 @@ class CpoBackEnd : public rclcpp::Node {
   /** \brief Cost terms associated with white-noise-on-acceleration motion prior */
   steam::ParallelizedCostTermCollection::Ptr smoothing_cost_terms_;
 
-  /** \brief Cost term for prior on C_ag roll */
-  steam::WeightedLeastSqCostTerm<1, 6>::Ptr roll_cost_term_;
+  /** \brief Cost term for prior on T_0g to help resolve roll */
+  steam::WeightedLeastSqCostTerm<6, 6>::Ptr pose_prior_cost_;
+
+  /** \brief Cost term for position prior on T_og to lock (we only care about orientation) */
+  steam::WeightedLeastSqCostTerm<3, 6>::Ptr position_cost_;
 
   /** \brief Loss function associated with TDCP costs */
   steam::LossFunctionBase::Ptr tdcp_loss_function_;
@@ -76,13 +83,13 @@ class CpoBackEnd : public rclcpp::Node {
 
   Eigen::Matrix<double, 4, 4> nonholonomic_cov_;
 
-  Eigen::Matrix<double, 1, 1> roll_cov_;
+  double roll_cov_;
 
-  /** \brief Our estimate of C_ag, stored to initialize the next optimization problem */
-  lgmath::so3::Rotation approx_rotation_;
+  /** \brief Our estimate of T_ag, stored to initialize the next optimization problem */
+  lgmath::se3::Transformation init_pose_;     // todo: not sure if we still need
 
-  /** \brief Store a window of TDCP messages */
-  std::queue<cpo_interfaces::msg::TDCP> msgs_;
+  /** \brief Store a window of TDCP messages. We use deque over queue to get access */
+  std::deque<cpo_interfaces::msg::TDCP> msgs_;
 
   /** \brief Size of the optimization window in msgs */
   uint window_size_;
