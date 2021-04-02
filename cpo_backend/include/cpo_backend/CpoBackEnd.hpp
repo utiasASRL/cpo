@@ -89,7 +89,7 @@ class CpoBackEnd : public rclcpp::Node {
   lgmath::se3::Transformation init_pose_;     // todo: not sure if we still need
 
   /** \brief Store a window of TDCP messages. We use deque over queue to get access */
-  std::deque<cpo_interfaces::msg::TDCP> msgs_;
+  std::deque<std::pair<cpo_interfaces::msg::TDCP, lgmath::se3::Transformation>> msgs_;
 
   /** \brief Size of the optimization window in msgs */
   uint window_size_;
