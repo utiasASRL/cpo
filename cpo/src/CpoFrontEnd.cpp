@@ -82,7 +82,7 @@ void CpoFrontEnd::publishTdcp(const cpo_interfaces::msg::TDCP &message) {
   publisher_->publish(message);
 
 #if FROM_FILE
-  usleep(1e6);      // temporary: sleep while developing so have a chance to watch
+  usleep(0.2e6);      // temporary: sleep while developing so have a chance to watch. Playing at ~5x
 #endif
 }
 
