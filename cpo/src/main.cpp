@@ -122,6 +122,11 @@ int main(int argc, char **argv) {
           meas_msg.t_a = 1e9 * (prev_time.time + prev_time.sec);  // todo: may lose precision here but shouldn't matter
           meas_msg.t_b = 1e9 * (curr_time.time + prev_time.sec);
 
+          Eigen::Vector3d current_code = node.getCurrentCodePos();
+          meas_msg.enu_pos.set__x(current_code.x());
+          meas_msg.enu_pos.set__y(current_code.y());
+          meas_msg.enu_pos.set__z(current_code.z());
+
           // calculate vectors to the 1st satellite
           Eigen::Vector3d r_1a_a;
           Eigen::Vector3d r_1a_b;
@@ -156,6 +161,9 @@ int main(int argc, char **argv) {
             pair_msg.r_2a_b.set__x(r_2a_b.x());
             pair_msg.r_2a_b.set__y(r_2a_b.y());
             pair_msg.r_2a_b.set__z(r_2a_b.z());
+
+            pair_msg.set__prn1(sat_1_id);
+            pair_msg.set__prn2(sat_2_id);
 
             meas_msg.pairs.push_back(pair_msg);
           }

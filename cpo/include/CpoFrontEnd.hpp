@@ -44,8 +44,23 @@ class CpoFrontEnd : public rclcpp::Node {
    * */
   void setEnuOrigin(double *rr);
 
+  /** \brief Get ECEF coordinates of our local ENU frame */
+  Eigen::Vector3d getEnuOrigin() {
+    return enu_origin_;
+  }
+
   /** \brief Update the latest code solution we calculated */
   void updateCodePos(double *rr);
+
+  /** \brief Get current code position in ENU */
+  Eigen::Vector3d getCurrentCodePos() {
+    return curr_code_solution_;
+  }
+
+  /** \brief Get previous code position in ENU */
+  Eigen::Vector3d getPreviousCodePos() {
+    return prev_code_solution_;
+  }
 
 #if !FROM_FILE
   /** \brief The serial port that listens for GNSS measurements */
