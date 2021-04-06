@@ -52,7 +52,12 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
     std::vector<TransformStateVar::Ptr> statevars;
 
     // keep track of states composed with frame transform for use in TDCP terms
+    std::vector<TransformEvaluator::ConstPtr> vehicle_poses;
     std::vector<TransformEvaluator::ConstPtr> enu_poses;
+
+    // set up T_0g state
+    TransformStateVar::Ptr T_0g_statevar(new TransformStateVar(init_pose_));
+    TransformEvaluator::ConstPtr T_0g = TransformStateEvaluator::MakeShared(T_0g_statevar);
 
     { // first pose in window gets locked
       TransformStateVar::Ptr temp_statevar_a(new TransformStateVar(lgmath::se3::Transformation()));
@@ -63,12 +68,9 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
       statevars.push_back(temp_statevar_a);
       traj_states.push_back(temp_a);
 
-      enu_poses.emplace_back(temp_pose_a);
+      vehicle_poses.emplace_back(temp_pose_a);
+      enu_poses.emplace_back(steam::se3::compose(temp_pose_a, T_0g));
     }
-
-    // set up T_0g state
-    TransformStateVar::Ptr T_0g_statevar(new TransformStateVar(init_pose_));
-    TransformEvaluator::ConstPtr T_0g = TransformStateEvaluator::MakeShared(T_0g_statevar);
 
     // loop over window to add states for other poses
     for (uint i = 0; i < msgs_.size(); ++i) {
@@ -82,13 +84,14 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
       statevars.push_back(temp_statevar);
       traj_states.push_back(temp);
 
-      enu_poses.emplace_back(temp_pose);
+      vehicle_poses.emplace_back(temp_pose);                                        // T_k0
+      enu_poses.emplace_back(steam::se3::compose(temp_pose, T_0g));   // T_kg = T_k0 * T_0g
     }
 
     // add TDCP terms
     for (uint k = 0; k < msgs_.size(); ++k) {
 
-      TransformEvaluator::ConstPtr T_k1k = steam::se3::compose(enu_poses[k + 1], steam::se3::inverse(enu_poses[k]));
+      TransformEvaluator::ConstPtr T_k1k = steam::se3::compose(vehicle_poses[k + 1], steam::se3::inverse(vehicle_poses[k]));
       PositionEvaluator::ConstPtr r_ba_ina(new PositionEvaluator(T_k1k));
 
       // using constant covariance here for now
@@ -178,7 +181,7 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
     // setup solver and optimize
     steam::DoglegGaussNewtonSolver::Params params;
     params.verbose = true;      // todo: make configurable
-    params.maxIterations = 5;
+    params.maxIterations = 3;
     solver_.reset(new steam::DoglegGaussNewtonSolver(problem_.get(), params));
     solver_->optimize();
 
@@ -194,6 +197,11 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
 
     std::cout << "r_ba_ina: " << pose.r_ba_ina().transpose() << std::endl;
     std::cout << "T_ba vec: " << pose.vec().transpose() << std::endl;
+
+    for (uint i = 1; i < msgs_.size(); ++i) {
+      msgs_[i].second = statevars[i]->getValue() * statevars[i - 1]->getValue().inverse();       // T_21 = T_20 * inv(T_10)
+      std::cout << "Set edge " << i << " to (vec) " << msgs_[i].second.vec().transpose() << std::endl;
+    }
 
     // update our orientation estimate
     init_pose_ = T_0g_statevar->getValue();   // todo: may need to update

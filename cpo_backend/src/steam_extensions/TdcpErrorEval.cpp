@@ -26,11 +26,16 @@ bool TdcpErrorEval::isActive() const {
 
 Eigen::Matrix<double, 1, 1> TdcpErrorEval::evaluate() const {
 
-  Eigen::Matrix3d C_ag = T_ag_->evaluate().C_ba();
+  EvalTreeHandle<lgmath::se3::Transformation> blkAutoEvalTransform = T_ag_->getBlockAutomaticEvaluation();
+  const lgmath::se3::Transformation &T_ag = blkAutoEvalTransform.getValue();
+  EvalTreeHandle<Eigen::Vector3d> blkAutoEvalPosition = r_ba_ina_->getBlockAutomaticEvaluation();
+  const Eigen::Vector3d &r = blkAutoEvalPosition.getValue();
+
+  const Eigen::Matrix3d& C_ag = T_ag.C_ba();
   double rho_1a = r_1a_ing_ata_.norm();
   double rho_2a = r_2a_ing_ata_.norm();
-  double rho_1b = (r_1a_ing_atb_ - C_ag * r_ba_ina_->evaluate()).norm();
-  double rho_2b = (r_2a_ing_atb_ - C_ag * r_ba_ina_->evaluate()).norm();
+  double rho_1b = (r_1a_ing_atb_ - C_ag * r).norm();
+  double rho_2b = (r_2a_ing_atb_ - C_ag * r).norm();
 
   double rho_dd = (rho_2b - rho_2a) - (rho_1b - rho_1a);
   double error = phi_dd_ - rho_dd;
@@ -52,8 +57,11 @@ Eigen::Matrix<double, 1, 1> TdcpErrorEval::evaluate(const Eigen::Matrix<double, 
     // Get evaluation tree
     EvalTreeHandle<Eigen::Vector3d> blkAutoEvalPosition = r_ba_ina_->getBlockAutomaticEvaluation();
 
+    EvalTreeHandle<lgmath::se3::Transformation> blkAutoEvalTransform = T_ag_->getBlockAutomaticEvaluation();
+    const lgmath::se3::Transformation &T_ag = blkAutoEvalTransform.getValue();
+
     // Get Jacobians
-    Eigen::Matrix<double, 1, 3> J_1 = u_a21_.transpose() * T_ag_->evaluate().C_ba().transpose(); // u^T * C_ag^T
+    Eigen::Matrix<double, 1, 3> J_1 = u_a21_.transpose() * T_ag.C_ba().transpose(); // u^T * C_ag^T
 
     Eigen::Matrix<double, 1, 3> newLhs = lhs * J_1;
     r_ba_ina_->appendBlockAutomaticJacobians(newLhs, blkAutoEvalPosition.getRoot(), jacs);
@@ -68,7 +76,8 @@ Eigen::Matrix<double, 1, 1> TdcpErrorEval::evaluate(const Eigen::Matrix<double, 
     const lgmath::se3::Transformation &T_ag = blkAutoEvalTransform.getValue();
 
     // manual implementation of skew-symmetric operator
-    Eigen::Vector3d r = r_ba_ina_->evaluate();
+    EvalTreeHandle<Eigen::Vector3d> blkAutoEvalPosition = r_ba_ina_->getBlockAutomaticEvaluation();
+    const Eigen::Vector3d &r = blkAutoEvalPosition.getValue();
     Eigen::Matrix3d r_hat;
     r_hat << 0, -r(2), r(1),
         r(2), 0, -r(0),
