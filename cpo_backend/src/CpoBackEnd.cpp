@@ -129,7 +129,7 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
         pp_loss_function_));
 
     steam::BaseNoiseModel<4>::Ptr nonholonomic_noise_model(new steam::StaticNoiseModel<4>(nonholonomic_cov_));
-    steam::se3::SteamTrajInterface traj(smoothing_factor_information_, true);
+    trajectory_ = std::make_shared<steam::se3::SteamTrajInterface>(steam::se3::SteamTrajInterface(smoothing_factor_information_, true));
 
     // loop through velocity state variables
     for (const auto &traj_state : traj_states) {
@@ -146,13 +146,13 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
         steam::Time temp_time = traj_state.getTime();
         const TransformEvaluator::Ptr &temp_pose = traj_state.getPose();
         const steam::VectorSpaceStateVar::Ptr &temp_velocity = traj_state.getVelocity();
-        traj.add(temp_time, temp_pose, temp_velocity);
+        trajectory_->add(temp_time, temp_pose, temp_velocity);
 
         // also add velocity state to problem
         problem_->addStateVariable(traj_state.getVelocity());
       }
     }
-    traj.appendPriorCostTerms(smoothing_cost_terms_);
+    trajectory_->appendPriorCostTerms(smoothing_cost_terms_);
 
     problem_->addCostTerm(tdcp_cost_terms_);
     problem_->addCostTerm(nonholonomic_cost_terms_);
