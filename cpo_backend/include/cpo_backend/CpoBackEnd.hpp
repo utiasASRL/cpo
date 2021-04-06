@@ -22,6 +22,9 @@ class CpoBackEnd : public rclcpp::Node {
   /** \brief Helper/debugger function that prints total cost and number of terms for each group of cost terms */
   void printCosts();
 
+  /** \brief Helper function */
+  static Eigen::Vector3d toEigenVec3d(const geometry_msgs::msg::Vector3 &ros_vec);
+
  private:
 
   /** \brief Callback for TDCP msgs */
@@ -90,5 +93,7 @@ class CpoBackEnd : public rclcpp::Node {
 
   /** \brief Size of the optimization window in msgs */
   uint window_size_;
+
+  bool first_window_ = true;
 
 };

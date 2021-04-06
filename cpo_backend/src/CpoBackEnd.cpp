@@ -72,12 +72,13 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
       enu_poses.emplace_back(steam::se3::compose(temp_pose_a, T_0g));
     }
 
+    lgmath::se3::Transformation T_k0_est;
     // loop over window to add states for other poses
     for (uint i = 0; i < msgs_.size(); ++i) {
-      Eigen::Matrix<double, 6, 1> plaus_Tba_vec;       // temporary way to initialize pose state variable
-      plaus_Tba_vec << -1.0 * (i + 1), 0.0, 0.0, 0.0, 0.0, 0.0;
 
-      TransformStateVar::Ptr temp_statevar(new TransformStateVar(lgmath::se3::Transformation(plaus_Tba_vec)));  // todo: replace with msgs_[i].second
+      T_k0_est = msgs_[i].second * T_k0_est;
+
+      TransformStateVar::Ptr temp_statevar(new TransformStateVar(T_k0_est));
       TransformStateEvaluator::Ptr temp_pose = TransformStateEvaluator::MakeShared(temp_statevar);
       VectorSpaceStateVar::Ptr temp_velocity = VectorSpaceStateVar::Ptr(new VectorSpaceStateVar(plausible_vel));
       SteamTrajVar temp(steam::Time((int64_t)msgs_[i].first.t_b), temp_pose, temp_velocity);
@@ -197,6 +198,7 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
 
     std::cout << "init_pose_ vec: " << init_pose_.vec().transpose() << std::endl;
 
+    first_window_ = false;
   }
 
 }
@@ -259,6 +261,17 @@ void CpoBackEnd::resetProblem() {
 
   // set up the steam problem
   problem_.reset(new steam::OptimizationProblem());
+
+  if (first_window_) {
+    // estimate initial T_0g from code solutions
+    Eigen::Vector3d r_k0_ing  = toEigenVec3d(msgs_.back().first.enu_pos) -  toEigenVec3d(msgs_.front().first.enu_pos);
+    double theta = atan2(r_k0_ing.y(), r_k0_ing.x());
+
+    Eigen::Matrix<double, 6, 1> init_pose_vec;
+    init_pose_vec << toEigenVec3d(msgs_.front().first.enu_pos), 0, 0, -1 * theta;
+
+    init_pose_ = lgmath::se3::Transformation(init_pose_vec);
+  }
 }
 
 void CpoBackEnd::printCosts() {
@@ -282,7 +295,12 @@ void CpoBackEnd::addMsgToWindow(const cpo_interfaces::msg::TDCP::SharedPtr &msg)
   }
 
   // add latest message
-  lgmath::se3::Transformation new_T_estimate = lgmath::se3::Transformation();   // todo - initialize better
+  double dist_since_last = msgs_.empty() ? 0 : (toEigenVec3d(msg->enu_pos) - toEigenVec3d(msgs_.back().first.enu_pos)).norm();
+
+  if (dist_since_last > 1.2) dist_since_last = 0.9;   // hacky error checking. todo: something else
+
+  Eigen::Vector3d r_ba_est{dist_since_last, 0.0, 0.0};
+  lgmath::se3::Transformation new_T_estimate = lgmath::se3::Transformation(Eigen::Matrix3d::Identity(), r_ba_est);
 
   msgs_.emplace_back(*msg, new_T_estimate);
 
@@ -311,4 +329,8 @@ geometry_msgs::msg::PoseWithCovariance CpoBackEnd::toPoseMsg(const lgmath::se3::
   msg.set__covariance(temp);
 
   return msg;
+}
+
+Eigen::Vector3d CpoBackEnd::toEigenVec3d(const geometry_msgs::msg::Vector3 &ros_vec) {
+  return Eigen::Vector3d{ros_vec.x, ros_vec.y, ros_vec.z};
 }
