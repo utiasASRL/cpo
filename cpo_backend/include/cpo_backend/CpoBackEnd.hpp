@@ -54,16 +54,13 @@ class CpoBackEnd : public rclcpp::Node {
   steam::ParallelizedCostTermCollection::Ptr tdcp_cost_terms_;
 
   /** \brief Cost terms associated with nonholonomic prior. */
-  steam::ParallelizedCostTermCollection::Ptr nonholonomic_cost_terms_;      // todo: may need some other terms from gpso
+  steam::ParallelizedCostTermCollection::Ptr nonholonomic_cost_terms_;
 
   /** \brief Cost terms associated with white-noise-on-acceleration motion prior */
   steam::ParallelizedCostTermCollection::Ptr smoothing_cost_terms_;
 
-  /** \brief Cost term for prior on T_0g to help resolve roll */
+  /** \brief Cost term for prior on T_0g to help resolve roll, lock position */
   steam::WeightedLeastSqCostTerm<6, 6>::Ptr pose_prior_cost_;
-
-  /** \brief Cost term for position prior on T_og to lock (we only care about orientation) */
-  steam::WeightedLeastSqCostTerm<3, 6>::Ptr position_cost_;
 
   /** \brief Loss function associated with TDCP costs */
   steam::LossFunctionBase::Ptr tdcp_loss_function_;
@@ -72,7 +69,7 @@ class CpoBackEnd : public rclcpp::Node {
   steam::LossFunctionBase::Ptr nonholonomic_loss_function_;
 
   /** \brief Loss function associated with roll prior */
-  steam::LossFunctionBase::Ptr roll_loss_function_;
+  steam::LossFunctionBase::Ptr pp_loss_function_;
 
   /** \brief The steam trajectory, allows smoothing factors, velocity priors and pose extrapolation */
   std::shared_ptr<steam::se3::SteamTrajInterface> trajectory_;
@@ -83,7 +80,7 @@ class CpoBackEnd : public rclcpp::Node {
 
   Eigen::Matrix<double, 4, 4> nonholonomic_cov_;
 
-  double roll_cov_;
+  Eigen::Matrix<double, 6, 6> pose_prior_cov_;
 
   /** \brief Our estimate of T_ag, stored to initialize the next optimization problem */
   lgmath::se3::Transformation init_pose_;     // todo: not sure if we still need

@@ -119,24 +119,14 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
       }
     }
 
-    // add weak prior on initial pose to deal with roll uncertainty
+    // add prior on initial pose to deal with roll uncertainty and constrain r^0g_g to zero
     steam::BaseNoiseModel<6>::Ptr
-        sharedNoiseModel(new steam::StaticNoiseModel<6>(roll_cov_ * Eigen::Matrix<double, 6, 6>::Identity()));
+        sharedNoiseModel(new steam::StaticNoiseModel<6>(pose_prior_cov_));
     steam::TransformErrorEval::Ptr prior_error_func(new steam::TransformErrorEval(init_pose_, T_0g));
     pose_prior_cost_ = steam::WeightedLeastSqCostTerm<6, 6>::Ptr(new steam::WeightedLeastSqCostTerm<6, 6>(
         prior_error_func,
         sharedNoiseModel,
-        roll_loss_function_));
-
-    // set up loss, noise model for unary factor to constrain r^0g_g to zero
-    steam::L2LossFunc::Ptr position_loss_func(new steam::L2LossFunc());
-    auto position_cov = 0.00005 * Eigen::Matrix<double, 3, 3>::Identity();
-    steam::BaseNoiseModel<3>::Ptr position_noise_model(new steam::StaticNoiseModel<3>(position_cov));
-    steam::PositionErrorEval::Ptr position_error_func(new steam::PositionErrorEval(T_0g));
-    position_cost_ =
-        steam::WeightedLeastSqCostTerm<3, 6>::Ptr(new steam::WeightedLeastSqCostTerm<3, 6>(position_error_func,
-                                                                                           position_noise_model,
-                                                                                           position_loss_func));
+        pp_loss_function_));
 
     steam::BaseNoiseModel<4>::Ptr nonholonomic_noise_model(new steam::StaticNoiseModel<4>(nonholonomic_cov_));
     steam::se3::SteamTrajInterface traj(smoothing_factor_information_, true);
@@ -168,7 +158,6 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
     problem_->addCostTerm(nonholonomic_cost_terms_);
     problem_->addCostTerm(smoothing_cost_terms_);
     problem_->addCostTerm(pose_prior_cost_);
-    problem_->addCostTerm(position_cost_);
 
     problem_->addStateVariable(T_0g_statevar);
     for (const auto &state : statevars) {
@@ -214,7 +203,7 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
 void CpoBackEnd::getParams() {
   // todo: eventually want to setup as ROS2 params (this->declare_parameter<...) but for now will hard code
 
-  double tdcp_cov = 0.01;
+  double tdcp_cov = 0.1;
   double non_holo_y = 0.1;
   double non_holo_z = 0.1;
   double non_holo_roll = 0.1;
@@ -225,7 +214,12 @@ void CpoBackEnd::getParams() {
   double ang_acc_std_dev_x = 0.1;
   double ang_acc_std_dev_y = 0.1;
   double ang_acc_std_dev_z = 0.1;
-  double roll_cov = 0.1;
+  double roll_cov_x = 0.001;
+  double roll_cov_y = 0.001;
+  double roll_cov_z = 0.001;
+  double roll_cov_ang1 = 0.01;
+  double roll_cov_ang2 = 0.01;
+  double roll_cov_ang3 = 1.0;
   uint window_size = 10;
 
   tdcp_cov_ << tdcp_cov;
@@ -241,7 +235,13 @@ void CpoBackEnd::getParams() {
   smoothing_factor_information_.setZero();
   smoothing_factor_information_.diagonal() = 1.0 / Qc_diag;
 
-  roll_cov_ = roll_cov;
+  pose_prior_cov_ = Eigen::Matrix<double, 6, 6>::Identity();
+  pose_prior_cov_(0, 0) = roll_cov_x;
+  pose_prior_cov_(1, 1) = roll_cov_y;
+  pose_prior_cov_(2, 2) = roll_cov_z;
+  pose_prior_cov_(3, 3) = roll_cov_ang1;
+  pose_prior_cov_(4, 4) = roll_cov_ang2;
+  pose_prior_cov_(5, 5) = roll_cov_ang3;
 
   window_size_ = window_size;
 }
@@ -250,7 +250,7 @@ void CpoBackEnd::resetProblem() {
   // setup loss functions
   tdcp_loss_function_.reset(new steam::DcsLossFunc(2.0));   // todo: try different loss functions
   nonholonomic_loss_function_.reset(new steam::L2LossFunc());
-  roll_loss_function_.reset(new steam::L2LossFunc());
+  pp_loss_function_.reset(new steam::L2LossFunc());
 
   // setup cost terms
   tdcp_cost_terms_.reset(new steam::ParallelizedCostTermCollection());
@@ -269,8 +269,7 @@ void CpoBackEnd::printCosts() {
             << nonholonomic_cost_terms_->numCostTerms() << std::endl;
   std::cout << "Smoothing:           " << smoothing_cost_terms_->cost() << "        Terms:  "
             << smoothing_cost_terms_->numCostTerms() << std::endl;
-  std::cout << "Roll Prior:          " << pose_prior_cost_->cost() << "        Terms:  1" << std::endl;
-  std::cout << "Position Prior:      " << position_cost_->cost() << "        Terms:  1" << std::endl;
+  std::cout << "Pose Prior:          " << pose_prior_cost_->cost() << "        Terms:  1" << std::endl;
 }
 
 void CpoBackEnd::addMsgToWindow(const cpo_interfaces::msg::TDCP::SharedPtr &msg) {
