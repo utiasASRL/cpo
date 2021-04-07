@@ -309,19 +309,20 @@ void CpoBackEnd::addMsgToWindow(const cpo_interfaces::msg::TDCP::SharedPtr &msg)
 
   // if we have a full queue, discard the oldest msg
   while (msgs_.size() > window_size_) {
+    init_pose_ = msgs_.front().second * init_pose_; // incrementing indices so need to update our T_0g estimate
     msgs_.pop_front();
   }
 }
 
 geometry_msgs::msg::PoseWithCovariance CpoBackEnd::toPoseMsg(const lgmath::se3::Transformation &T,
                                                              const Eigen::Matrix<double, 6, 6> &cov) {
-  Eigen::Quaterniond q(T.matrix().topLeftCorner<3, 3>());
-  Eigen::Vector3d r = T.matrix().topRightCorner<3, 1>();
+  Eigen::Quaterniond q(T.C_ba());
+  Eigen::Vector3d r_ba_ina = T.r_ba_ina();
 
   geometry_msgs::msg::PoseWithCovariance msg;
-  msg.pose.position.set__x(r[0]);
-  msg.pose.position.set__y(r[1]);
-  msg.pose.position.set__z(r[2]);
+  msg.pose.position.set__x(r_ba_ina[0]);
+  msg.pose.position.set__y(r_ba_ina[1]);
+  msg.pose.position.set__z(r_ba_ina[2]);
   msg.pose.orientation.set__x(q.x());
   msg.pose.orientation.set__y(q.y());
   msg.pose.orientation.set__z(q.z());
