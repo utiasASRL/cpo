@@ -124,6 +124,11 @@ int main(int argc, char **argv) {
         meas_msg.enu_pos.set__y(current_code.y());
         meas_msg.enu_pos.set__z(current_code.z());
 
+        Eigen::Vector3d enu_origin = node.getGeodeticEnuOrigin();
+        meas_msg.enu_origin.set__x(enu_origin.x());
+        meas_msg.enu_origin.set__y(enu_origin.y());
+        meas_msg.enu_origin.set__z(enu_origin.z());
+
         // calculate vectors to the 1st satellite
         Eigen::Vector3d r_1a_a;
         Eigen::Vector3d r_1a_b;

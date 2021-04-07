@@ -49,6 +49,11 @@ class CpoFrontEnd : public rclcpp::Node {
     return enu_origin_;
   }
 
+  /** \brief Get geodetic (lat/long/alt) coordinates of our local ENU frame */
+  Eigen::Vector3d getGeodeticEnuOrigin() {
+        return geodetic_enu_origin_;
+  }
+
   /** \brief Update the latest code solution we calculated */
   void updateCodePos(double *rr);
 
@@ -98,6 +103,9 @@ class CpoFrontEnd : public rclcpp::Node {
 
   /** \brief Position of the local East-North-Up frame origin in ECEF coordinates */
   Eigen::Vector3d enu_origin_;
+
+  /** \brief Position of the local East-North-Up frame origin in geodetic coordinates */
+  Eigen::Vector3d geodetic_enu_origin_;
 
   /** \brief SO(3) rotation matrix between the ENU and ECEF frames */
   Eigen::Matrix3d C_enu_ecef_;

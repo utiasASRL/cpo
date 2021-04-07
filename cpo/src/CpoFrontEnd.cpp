@@ -54,8 +54,7 @@ int CpoFrontEnd::getSatelliteVector(int sat_no, gtime_t time, gtime_t eph_time, 
 
 void CpoFrontEnd::setEnuOrigin(double *rr) {
 
-  Eigen::Vector3d rr_vec(rr[0], rr[1], rr[2]);
-  enu_origin_ = rr_vec;
+  enu_origin_ = Eigen::Vector3d{rr[0], rr[1], rr[2]};
 
   // convert to lat/long as sanity check
   double geo_init[3];
@@ -68,8 +67,11 @@ void CpoFrontEnd::setEnuOrigin(double *rr) {
   C_enu_ecef_ << C[0], C[3], C[6], C[1], C[4], C[7], C[2], C[5], C[8];
   enu_origin_set = true;
 
-  std::cout << "ENU origin set to " << std::setprecision(10) << geo_init[0] * R2D << " deg lat, " << geo_init[1] * R2D << " deg lat, "
-      << std::setprecision(6) << geo_init[2] << " m alt." << std::endl;
+  geodetic_enu_origin_ = Eigen::Vector3d{geo_init[0] * R2D, geo_init[1] * R2D, geo_init[2]};
+
+  std::cout << "ENU origin set to " << std::setprecision(10) << geodetic_enu_origin_[0] << " deg lat, "
+            << geodetic_enu_origin_[1] << " deg lat, " << std::setprecision(6) << geodetic_enu_origin_[2] << " m alt."
+            << std::endl;
 }
 
 void CpoFrontEnd::updateCodePos(double *rr) {
