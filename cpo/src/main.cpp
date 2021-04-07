@@ -68,108 +68,104 @@ int main(int argc, char **argv) {
       for (const auto &sat : *node.curr_sats) std::cout << (int) sat.first << ", ";
       std::cout << std::endl;
 
-      // only attempt TDCP if we have enough ephemeris info
-      if (node.eph_count_gps >= 4) {
+      // get approximate start position through single-point (pseudo-range) positioning
+      sol_t init_solution;
+      char error_msg[128];
+      bool success = pntpos(node.rtcm.obs.data,
+                            node.rtcm.obs.n,
+                            &node.rtcm.nav,
+                            &node.code_positioning_options,
+                            &init_solution,
+                            nullptr,
+                            nullptr,
+                            error_msg);
 
-        // get approximate start position through single-point (pseudo-range) positioning
-        sol_t init_solution;
-        char error_msg[128];
-        bool success = pntpos(node.rtcm.obs.data,
-                              node.rtcm.obs.n,
-                              &node.rtcm.nav,
-                              &node.code_positioning_options,
-                              &init_solution,
-                              nullptr,
-                              nullptr,
-                              error_msg);
-
-        if (success) {
-          // define the ENU origin if this is the first solution calculated
-          if (!node.enu_origin_set) {
-            node.setEnuOrigin(&init_solution.rr[0]);
-          }
-          node.updateCodePos(&init_solution.rr[0]);
+      if (success) {
+        // define the ENU origin if this is the first solution calculated
+        if (!node.enu_origin_set) {
+          node.setEnuOrigin(&init_solution.rr[0]);
         }
+        node.updateCodePos(&init_solution.rr[0]);
+      }
 
-        // perform TDCP
-        if (node.prev_sats->size() >= 2 && node.enu_origin_set) {
-          // iterate through map to find common satellites
-          std::vector<int> matches;
-          for (auto &[id, curr_sat] : *node.curr_sats) {
-            // check for valid ephemeris and continuous phase lock
-            if (node.eph_set_gps[id] && curr_sat.isPhaseLocked()) {
-              // check that we saw the same satellite last msg
-              if (node.prev_sats->count(id) == 1) {
-                matches.push_back(id);
-              }
+      // perform TDCP
+      if (node.prev_sats->size() >= 2 && node.enu_origin_set) {
+        // iterate through map to find common satellites
+        std::vector<int> matches;
+        for (auto &[id, curr_sat] : *node.curr_sats) {
+          // check for valid ephemeris and continuous phase lock
+          if (node.eph_set_gps[id] && curr_sat.isPhaseLocked()) {
+            // check that we saw the same satellite last msg
+            if (node.prev_sats->count(id) == 1) {
+              matches.push_back(id);
             }
           }
-
-          // check that we have at least 2 satellite matches so we can create a double-difference
-          if (matches.size() < 2) continue;
-
-          // if we have gotten this far, we plan on publishing a message
-          cpo_interfaces::msg::TDCP meas_msg;
-
-          // calculate necessary values for each pair to fill in SatPair msg
-          // we'll use the 1st match as the 1st satellite for all pairs and the j^th match for the 2nd
-          int sat_1_id = matches[0];
-          const auto &sat_1a = node.prev_sats->at(sat_1_id);
-          const auto &sat_1b = node.curr_sats->at(sat_1_id);
-
-          gtime_t prev_time = sat_1a.getTimestamp();
-          gtime_t curr_time = sat_1b.getTimestamp();
-          meas_msg.t_a = 1e9 * (prev_time.time + prev_time.sec);  // todo: may lose precision here but shouldn't matter
-          meas_msg.t_b = 1e9 * (curr_time.time + prev_time.sec);
-
-          Eigen::Vector3d current_code = node.getCurrentCodePos();
-          meas_msg.enu_pos.set__x(current_code.x());
-          meas_msg.enu_pos.set__y(current_code.y());
-          meas_msg.enu_pos.set__z(current_code.z());
-
-          // calculate vectors to the 1st satellite
-          Eigen::Vector3d r_1a_a;
-          Eigen::Vector3d r_1a_b;
-          node.getSatelliteVector(sat_1_id, prev_time, prev_time, r_1a_a);    //todo: should check return value
-          node.getSatelliteVector(sat_1_id, curr_time, prev_time, r_1a_b);
-
-          for (unsigned int j = 1; j < matches.size(); ++j) {
-            int sat_2_id = matches[j];
-            const auto &sat_2a = node.prev_sats->at(sat_2_id);
-            const auto &sat_2b = node.curr_sats->at(sat_2_id);
-
-            double phi_dd = (sat_2b.getAdjPhaseRange() - sat_2a.getAdjPhaseRange())
-                - (sat_1b.getAdjPhaseRange() - sat_1a.getAdjPhaseRange());
-
-            // calculate vectors to 2nd satellite
-            Eigen::Vector3d r_2a_a = Eigen::Vector3d::Zero();   // placeholder
-            Eigen::Vector3d r_2a_b = Eigen::Vector3d::Zero();   // placeholder
-            node.getSatelliteVector(sat_2_id, prev_time, prev_time, r_2a_a);
-            node.getSatelliteVector(sat_2_id, curr_time, prev_time, r_2a_b);
-
-            cpo_interfaces::msg::SatPair pair_msg;
-            pair_msg.phi_measured = phi_dd;
-            pair_msg.r_1a_a.set__x(r_1a_a.x());   // more efficient way?
-            pair_msg.r_1a_a.set__y(r_1a_a.y());
-            pair_msg.r_1a_a.set__z(r_1a_a.z());
-            pair_msg.r_1a_b.set__x(r_1a_b.x());
-            pair_msg.r_1a_b.set__y(r_1a_b.y());
-            pair_msg.r_1a_b.set__z(r_1a_b.z());
-            pair_msg.r_2a_a.set__x(r_2a_a.x());
-            pair_msg.r_2a_a.set__y(r_2a_a.y());
-            pair_msg.r_2a_a.set__z(r_2a_a.z());
-            pair_msg.r_2a_b.set__x(r_2a_b.x());
-            pair_msg.r_2a_b.set__y(r_2a_b.y());
-            pair_msg.r_2a_b.set__z(r_2a_b.z());
-
-            pair_msg.set__prn1(sat_1_id);
-            pair_msg.set__prn2(sat_2_id);
-
-            meas_msg.pairs.push_back(pair_msg);
-          }
-          // publish the pseudo-measurement to be used by the back-end
-          node.publishTdcp(meas_msg);
         }
+
+        // check that we have at least 2 satellite matches so we can create a double-difference
+        if (matches.size() < 2) continue;
+
+        // if we have gotten this far, we plan on publishing a message
+        cpo_interfaces::msg::TDCP meas_msg;
+
+        // calculate necessary values for each pair to fill in SatPair msg
+        // we'll use the 1st match as the 1st satellite for all pairs and the j^th match for the 2nd
+        int sat_1_id = matches[0];
+        const auto &sat_1a = node.prev_sats->at(sat_1_id);
+        const auto &sat_1b = node.curr_sats->at(sat_1_id);
+
+        gtime_t prev_time = sat_1a.getTimestamp();
+        gtime_t curr_time = sat_1b.getTimestamp();
+        meas_msg.t_a = 1e9 * (prev_time.time + prev_time.sec);  // todo: may lose precision here but shouldn't matter
+        meas_msg.t_b = 1e9 * (curr_time.time + prev_time.sec);
+
+        Eigen::Vector3d current_code = node.getCurrentCodePos();
+        meas_msg.enu_pos.set__x(current_code.x());
+        meas_msg.enu_pos.set__y(current_code.y());
+        meas_msg.enu_pos.set__z(current_code.z());
+
+        // calculate vectors to the 1st satellite
+        Eigen::Vector3d r_1a_a;
+        Eigen::Vector3d r_1a_b;
+        node.getSatelliteVector(sat_1_id, prev_time, prev_time, r_1a_a);    //todo: should check return value
+        node.getSatelliteVector(sat_1_id, curr_time, prev_time, r_1a_b);
+
+        for (unsigned int j = 1; j < matches.size(); ++j) {
+          int sat_2_id = matches[j];
+          const auto &sat_2a = node.prev_sats->at(sat_2_id);
+          const auto &sat_2b = node.curr_sats->at(sat_2_id);
+
+          double phi_dd = (sat_2b.getAdjPhaseRange() - sat_2a.getAdjPhaseRange())
+              - (sat_1b.getAdjPhaseRange() - sat_1a.getAdjPhaseRange());
+
+          // calculate vectors to 2nd satellite
+          Eigen::Vector3d r_2a_a = Eigen::Vector3d::Zero();   // placeholder
+          Eigen::Vector3d r_2a_b = Eigen::Vector3d::Zero();   // placeholder
+          node.getSatelliteVector(sat_2_id, prev_time, prev_time, r_2a_a);
+          node.getSatelliteVector(sat_2_id, curr_time, prev_time, r_2a_b);
+
+          cpo_interfaces::msg::SatPair pair_msg;
+          pair_msg.phi_measured = phi_dd;
+          pair_msg.r_1a_a.set__x(r_1a_a.x());   // more efficient way?
+          pair_msg.r_1a_a.set__y(r_1a_a.y());
+          pair_msg.r_1a_a.set__z(r_1a_a.z());
+          pair_msg.r_1a_b.set__x(r_1a_b.x());
+          pair_msg.r_1a_b.set__y(r_1a_b.y());
+          pair_msg.r_1a_b.set__z(r_1a_b.z());
+          pair_msg.r_2a_a.set__x(r_2a_a.x());
+          pair_msg.r_2a_a.set__y(r_2a_a.y());
+          pair_msg.r_2a_a.set__z(r_2a_a.z());
+          pair_msg.r_2a_b.set__x(r_2a_b.x());
+          pair_msg.r_2a_b.set__y(r_2a_b.y());
+          pair_msg.r_2a_b.set__z(r_2a_b.z());
+
+          pair_msg.set__prn1(sat_1_id);
+          pair_msg.set__prn2(sat_2_id);
+
+          meas_msg.pairs.push_back(pair_msg);
+        }
+        // publish the pseudo-measurement to be used by the back-end
+        node.publishTdcp(meas_msg);
       }
       // current {sats, code_pos} -> previous {sats, code_pos}
       node.stepForward();
