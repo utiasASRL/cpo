@@ -2,6 +2,7 @@
 #include <UnicycleErrorEval.hpp>
 
 #include <cpo_backend/CpoBackEnd.hpp>
+#include <fstream>
 
 using TransformStateVar = steam::se3::TransformStateVar;
 using TransformStateEvaluator = steam::se3::TransformStateEvaluator;
@@ -186,13 +187,14 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
     }
 
     // update our orientation estimate
-    init_pose_ = T_0g_statevar->getValue();   // todo: may need to update
+    init_pose_ = T_0g_statevar->getValue();
 
     std::cout << "init_pose_ vec: " << init_pose_.vec().transpose() << std::endl;
 
     // publish
     Eigen::Matrix<double, 6, 6> dummy_covariance = Eigen::Matrix<double, 6, 6>::Identity();   // todo: get correct cov
-    geometry_msgs::msg::PoseWithCovariance relative_pose_msg = toPoseMsg(msgs_.back().second, dummy_covariance);
+    const auto &T_n_n1 = msgs_.back().second;
+    geometry_msgs::msg::PoseWithCovariance relative_pose_msg = toPoseMsg(T_n_n1, dummy_covariance);
     vehicle_publisher_->publish(relative_pose_msg);
     lgmath::se3::Transformation T_ng = statevars.back()->getValue() * init_pose_;
     geometry_msgs::msg::PoseWithCovariance enu_pose_msg = toPoseMsg(T_ng, dummy_covariance);
@@ -200,6 +202,29 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
 
     std::cout << "r_ng_ing: " << T_ng.r_ba_ina().transpose() << std::endl;
     std::cout << "T_ng vec: " << T_ng.vec().transpose() << std::endl;
+
+    // append latest estimate to file
+    std::ofstream outstream;
+    outstream.open(results_path_, std::ofstream::out | std::ofstream::app);
+    const auto &t_n = msgs_.back().first.t_b;
+    const auto &t_n1 = msgs_.back().first.t_a;
+    const auto r_ng_g = T_ng.r_ba_ina();
+
+    // save times and global position for easy plotting
+    outstream << std::setprecision(12) << t_n << ", " << t_n1 << ", ";
+    outstream << r_ng_g[0] << ", " << r_ng_g[1] << ", " << r_ng_g[2] << ", ";
+
+    // save full transformations as well. Transpose needed to print in row-major order
+    auto temp = T_ng.matrix().transpose();
+    auto T_ng_flat = std::vector<double>(temp.data(), temp.data() + 16);
+    for (auto entry : T_ng_flat) outstream << entry << ",";
+
+    temp = T_n_n1.matrix().transpose();
+    auto T_n_n1_flat = std::vector<double>(temp.data(), temp.data() + 16);
+    for (auto entry : T_n_n1_flat) outstream << entry << ",";
+
+    outstream << std::endl;
+    outstream.close();
 
     first_window_ = false;
   }
@@ -226,6 +251,7 @@ void CpoBackEnd::getParams() {
   double roll_cov_ang2 = 0.01;
   double roll_cov_ang3 = 1.0;
   uint window_size = 10;
+  std::string results_path = "/home/ben/CLionProjects/ros2-ws/src/cpo_analysis/data/estimates/cpo.csv"; // todo: better name
 
   tdcp_cov_ << tdcp_cov;
 
@@ -249,6 +275,8 @@ void CpoBackEnd::getParams() {
   pose_prior_cov_(5, 5) = roll_cov_ang3;
 
   window_size_ = window_size;
+
+  results_path_ = results_path;
 }
 
 void CpoBackEnd::resetProblem() {
@@ -274,6 +302,13 @@ void CpoBackEnd::resetProblem() {
     init_pose_vec << toEigenVec3d(msgs_.front().first.enu_pos), 0, 0, -1 * theta;
 
     init_pose_ = lgmath::se3::Transformation(init_pose_vec);
+
+    // save ENU origin to results file
+    std::ofstream outstream;
+    outstream.open(results_path_);
+    Eigen::Vector3d enu_origin = toEigenVec3d(msgs_.back().first.enu_origin);
+    outstream << std::setprecision(9) << enu_origin[0] << "," << enu_origin[1] << "," << enu_origin[2] << std::endl;
+    outstream.close();
   }
 }
 

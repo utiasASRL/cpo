@@ -91,8 +91,11 @@ class CpoBackEnd : public rclcpp::Node {
 
   Eigen::Matrix<double, 6, 6> pose_prior_cov_;
 
+  /** \brief File path for saving a CSV file of our estimates */
+  std::string results_path_;
+
   /** \brief Our estimate of T_ag, stored to initialize the next optimization problem */
-  lgmath::se3::Transformation init_pose_;     // todo: not sure if we still need
+  lgmath::se3::Transformation init_pose_;
 
   /** \brief Store a window of TDCP messages. We use deque over queue to get access */
   std::deque<std::pair<cpo_interfaces::msg::TDCP, lgmath::se3::Transformation>> msgs_;
