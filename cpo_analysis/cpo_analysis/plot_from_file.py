@@ -36,6 +36,7 @@ def safe_int(field):
 def read_gpgga(gga_path, gps_day, proj_origin, start_time=0.0, end_time=4999999999.9):
     """Read file of ASCII GPGGA messages and return measurements as array in UTM coordinates"""
 
+    # todo: transverse mercator projection very slightly different from Euclidean ENU
     projection = Proj(
         "+proj=etmerc +ellps=WGS84 +lat_0={0} +lon_0={1} +x_0=0 +y_0=0 +z_0={2} +k_0=1".format(proj_origin[0],
                                                                                                proj_origin[1],
@@ -76,9 +77,8 @@ def main():
 
     dataset = "feb15a"
 
-    csv_dir = "./../results/"           # todo - change
-    # csv_file = dataset + "_filter.csv"
-    csv_file = dataset + "_batch.csv"       # todo - update
+    csv_dir = "./../data/estimates"
+    csv_file = dataset + "_cpo.csv"       # todo - update
     positions = np.genfromtxt(osp.join(csv_dir, csv_file), delimiter=',', skip_header=3)
     interval = np.genfromtxt(osp.join(csv_dir, csv_file), delimiter=',', skip_header=1, max_rows=1)
 
@@ -90,13 +90,9 @@ def main():
     # start_time = 0
     # end_time = 29999999999
 
-    gt_dir = "./../data/gpgga/"             # todo
+    gt_dir = "./../data/groundtruth/"
     gt_file = dataset + "_gga.ASC"
-    if dataset == "nov25c2":
-        day = 2133 * 7 + 3  # Nov.25/20
-    elif dataset[:5] == "jan13":
-        day = 2140 * 7 + 3  # Jan.13/21
-    elif dataset[:5] == "feb10":
+    if dataset[:5] == "feb10":
         day = 2144 * 7 + 3  # Feb.10/21
     elif dataset[:5] == "feb15":
         day = 2145 * 7 + 1  # Feb.15/21
