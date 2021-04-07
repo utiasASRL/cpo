@@ -94,6 +94,12 @@ class CpoBackEnd : public rclcpp::Node {
   /** \brief File path for saving a CSV file of our estimates */
   std::string results_path_;
 
+  /** \brief Whether to print extra information about the optimization */
+  bool steam_verbose_;
+
+  /** \brief Maximum number of solver iterations per optimization */
+  uint steam_max_iterations_;
+
   /** \brief Our estimate of T_ag, stored to initialize the next optimization problem */
   lgmath::se3::Transformation init_pose_;
 

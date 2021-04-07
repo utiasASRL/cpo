@@ -61,4 +61,10 @@ install(TARGETS
         cpo_backend
         DESTINATION lib/${PROJECT_NAME})
 
+# Parameter files
+install(DIRECTORY
+        config
+        DESTINATION share/${PROJECT_NAME}
+        )
+
 ament_package()

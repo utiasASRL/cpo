@@ -172,8 +172,8 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
 
     // setup solver and optimize
     steam::DoglegGaussNewtonSolver::Params params;
-    params.verbose = true;      // todo: make configurable
-    params.maxIterations = 3;
+    params.verbose = steam_verbose_;
+    params.maxIterations = steam_max_iterations_;
     solver_.reset(new steam::DoglegGaussNewtonSolver(problem_.get(), params));
     solver_->optimize();
 
@@ -231,52 +231,60 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
 
 }
 void CpoBackEnd::getParams() {
-  // todo: eventually want to setup as ROS2 params (this->declare_parameter<...) but for now will hard code
+  this->declare_parameter("tdcp_cov", 0.1);
+  this->declare_parameter("non_holo_y", 0.1);
+  this->declare_parameter("non_holo_z", 0.1);
+  this->declare_parameter("non_holo_roll", 0.1);
+  this->declare_parameter("non_holo_pitch", 0.1);
+  this->declare_parameter("lin_acc_std_dev_x", 1.0);
+  this->declare_parameter("lin_acc_std_dev_y", 0.1);
+  this->declare_parameter("lin_acc_std_dev_z", 0.1);
+  this->declare_parameter("ang_acc_std_dev_x", 0.1);
+  this->declare_parameter("ang_acc_std_dev_y", 0.1);
+  this->declare_parameter("ang_acc_std_dev_z", 0.1);
+  this->declare_parameter("roll_cov_x", 0.001);
+  this->declare_parameter("roll_cov_y", 0.001);
+  this->declare_parameter("roll_cov_z", 0.001);
+  this->declare_parameter("roll_cov_ang1", 0.01);
+  this->declare_parameter("roll_cov_ang2", 0.01);
+  this->declare_parameter("roll_cov_ang3", 1.0);
+  this->declare_parameter("window_size", 10);
+  this->declare_parameter("results_path");
+  this->declare_parameter("solver_verbose", false);
+  this->declare_parameter("solver_max_iterations", 5);
 
-  double tdcp_cov = 0.1;
-  double non_holo_y = 0.1;
-  double non_holo_z = 0.1;
-  double non_holo_roll = 0.1;
-  double non_holo_pitch = 0.1;
-  double lin_acc_std_dev_x = 1.0;
-  double lin_acc_std_dev_y = 0.1;
-  double lin_acc_std_dev_z = 0.1;
-  double ang_acc_std_dev_x = 0.1;
-  double ang_acc_std_dev_y = 0.1;
-  double ang_acc_std_dev_z = 0.1;
-  double roll_cov_x = 0.001;
-  double roll_cov_y = 0.001;
-  double roll_cov_z = 0.001;
-  double roll_cov_ang1 = 0.01;
-  double roll_cov_ang2 = 0.01;
-  double roll_cov_ang3 = 1.0;
-  uint window_size = 10;
-  std::string results_path = "/home/ben/CLionProjects/ros2-ws/src/cpo_analysis/data/estimates/cpo.csv"; // todo: better name
-
-  tdcp_cov_ << tdcp_cov;
+  tdcp_cov_ << this->get_parameter("tdcp_cov").as_double();
 
   Eigen::Array<double, 1, 4> non_holo_diag;
-  non_holo_diag << non_holo_y, non_holo_z, non_holo_roll, non_holo_pitch;
+  non_holo_diag << this->get_parameter("non_holo_y").as_double(),
+                   this->get_parameter("non_holo_z").as_double(),
+                   this->get_parameter("non_holo_roll").as_double(),
+                   this->get_parameter("non_holo_pitch").as_double();
   nonholonomic_cov_.setZero();
   nonholonomic_cov_.diagonal() = non_holo_diag;
 
   Eigen::Array<double, 1, 6> Qc_diag;
-  Qc_diag << lin_acc_std_dev_x, lin_acc_std_dev_y, lin_acc_std_dev_z,
-      ang_acc_std_dev_x, ang_acc_std_dev_y, ang_acc_std_dev_z;
+  Qc_diag << this->get_parameter("lin_acc_std_dev_x").as_double(),
+             this->get_parameter("lin_acc_std_dev_y").as_double(),
+             this->get_parameter("lin_acc_std_dev_z").as_double(),
+             this->get_parameter("ang_acc_std_dev_x").as_double(),
+             this->get_parameter("ang_acc_std_dev_y").as_double(),
+             this->get_parameter("ang_acc_std_dev_z").as_double();
   smoothing_factor_information_.setZero();
   smoothing_factor_information_.diagonal() = 1.0 / Qc_diag;
 
   pose_prior_cov_ = Eigen::Matrix<double, 6, 6>::Identity();
-  pose_prior_cov_(0, 0) = roll_cov_x;
-  pose_prior_cov_(1, 1) = roll_cov_y;
-  pose_prior_cov_(2, 2) = roll_cov_z;
-  pose_prior_cov_(3, 3) = roll_cov_ang1;
-  pose_prior_cov_(4, 4) = roll_cov_ang2;
-  pose_prior_cov_(5, 5) = roll_cov_ang3;
+  pose_prior_cov_(0, 0) = this->get_parameter("roll_cov_x").as_double();
+  pose_prior_cov_(1, 1) = this->get_parameter("roll_cov_y").as_double();
+  pose_prior_cov_(2, 2) = this->get_parameter("roll_cov_z").as_double();
+  pose_prior_cov_(3, 3) = this->get_parameter("roll_cov_ang1").as_double();
+  pose_prior_cov_(4, 4) = this->get_parameter("roll_cov_ang2").as_double();
+  pose_prior_cov_(5, 5) = this->get_parameter("roll_cov_ang3").as_double();
 
-  window_size_ = window_size;
-
-  results_path_ = results_path;
+  window_size_ = this->get_parameter("window_size").as_int();
+  results_path_ = this->get_parameter("results_path").as_string();
+  steam_verbose_ = this->get_parameter("solver_verbose").as_bool();
+  steam_max_iterations_ = this->get_parameter("solver_max_iterations").as_int();
 }
 
 void CpoBackEnd::resetProblem() {
@@ -364,7 +372,7 @@ geometry_msgs::msg::PoseWithCovariance CpoBackEnd::toPoseMsg(const lgmath::se3::
   msg.pose.orientation.set__w(q.w());
 
   std::array<double, 36> temp{};
-  Eigen::Matrix<double, 6, 6>::Map(temp.data()) = cov;  // todo: not sure if this cov is valid
+  Eigen::Matrix<double, 6, 6>::Map(temp.data()) = cov;
   msg.set__covariance(temp);
 
   return msg;

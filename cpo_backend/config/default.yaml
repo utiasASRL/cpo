@@ -1,0 +1,25 @@
+cpo_back_end:
+  ros__parameters:
+    results_path: "/home/ben/CLionProjects/ros2-ws/src/cpo_analysis/data/estimates/cpo.csv" # todo: better name
+    window_size: 10
+
+    tdcp_cov: 0.01
+    non_holo_y: 0.1
+    non_holo_z: 0.1
+    non_holo_roll: 0.1
+    non_holo_pitch: 0.1
+    lin_acc_std_dev_x: 1.0
+    lin_acc_std_dev_y: 0.1
+    lin_acc_std_dev_z: 0.1
+    ang_acc_std_dev_x: 0.1
+    ang_acc_std_dev_y: 0.1
+    ang_acc_std_dev_z: 0.1
+    prior_cov_x: 0.001
+    prior_cov_y: 0.001
+    prior_cov_z: 0.001
+    prior_cov_ang1: 0.01
+    prior_cov_ang2: 0.01
+    prior_cov_ang3: 1.0
+
+    solver_verbose: true
+    solver_max_iterations: 10
