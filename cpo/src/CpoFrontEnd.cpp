@@ -73,9 +73,17 @@ void CpoFrontEnd::setEnuOrigin(double *rr) {
 }
 
 void CpoFrontEnd::updateCodePos(double *rr) {
+  // convert to lat/long as sanity check
+  double geo_init[3];
+  ecef2pos(rr, geo_init);
+
+//  std::cout << "New code position at " << std::setprecision(10) << geo_init[0] * R2D << " deg lat, " << geo_init[1] * R2D << " deg lat, "
+//            << std::setprecision(6) << geo_init[2] << " m alt." << std::endl;     // todo: put into current_geodetic_ and add to msg (?)
+
+
   Eigen::Vector3d r_vc_inc(rr[0], rr[1], rr[2]);
   curr_code_solution_ = C_enu_ecef_ * (r_vc_inc - enu_origin_);
-//  std::cout << "curr_code_solution_ " << curr_code_solution_.transpose() << std::endl;    // DEBUG
+  std::cout << "curr_code_solution_ " << curr_code_solution_.transpose() << std::endl;    // DEBUG
 }
 
 void CpoFrontEnd::publishTdcp(const cpo_interfaces::msg::TDCP &message) {
