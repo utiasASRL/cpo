@@ -21,13 +21,13 @@ int main(int argc, char **argv) {
   int rtcm_status;
 
   _IO_FILE *fp;
-  if (!node.from_serial_) {
-    fp = fopen(node.rtcm_path_, "r");
+  if (!node.from_serial) {
+    fp = fopen(node.rtcm_path.c_str(), "r");
   }
 
   while (rclcpp::ok()) {
 
-    if (node.from_serial_) {
+    if (node.from_serial) {
       // attempt to read byte from serial, if no data, continue
       size_t bytes_read = node.serial_port->read(&byte_in, 1);    // todo: add option to log raw RTCM to file?
       if (!bytes_read) continue;

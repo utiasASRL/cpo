@@ -53,4 +53,10 @@ install(TARGETS
         replay_RTCM
         DESTINATION lib/${PROJECT_NAME})
 
+# Parameter files
+install(DIRECTORY
+        config
+        DESTINATION share/${PROJECT_NAME}
+        )
+
 ament_package()

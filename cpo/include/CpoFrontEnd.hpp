@@ -90,10 +90,10 @@ class CpoFrontEnd : public rclcpp::Node {
   bool enu_origin_set = false;
 
   /** \brief True if running live over serial, false if we are reading a logged dataset */
-  bool from_serial_;
+  bool from_serial;
 
   /** Location to find binary RTCM file when reading logged data */
-  const char *rtcm_path_;
+  std::string rtcm_path;
 
  private:
 
@@ -114,5 +114,9 @@ class CpoFrontEnd : public rclcpp::Node {
 
   /** \brief Publishes the TDCP pseudo-measurement ROS2 msg */
   rclcpp::Publisher<cpo_interfaces::msg::TDCP>::SharedPtr publisher_;
+
+  std::string port_path_;
+
+  unsigned long baud_;
 
 };

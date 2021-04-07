@@ -7,18 +7,27 @@
 CpoFrontEnd::CpoFrontEnd()
     : Node("cpo_front_end") {
 
-  // serial port parameters
-  std::string port_path = "/dev/ttyUSB0";     // todo: rosparam stuff
-  unsigned long baud = 57600;     // default to 57600
-  from_serial_ = true;
-  rtcm_path_ = "/home/ben/CLionProjects/gpso/data/rtcm3/feb15c.BIN";    // todo: check path exists
+  this->declare_parameter("port_path", "/dev/ttyUSB0");
+  this->declare_parameter("baud", 57600);
+  this->declare_parameter("from_serial", true);
+  this->declare_parameter("data_path", "/home/ben/CLionProjects/gpso/data/rtcm3/feb15c.BIN");
+  this->declare_parameter("approximate_time", -1);
 
-  if (from_serial_ && !fs::exists(port_path)) {          // todo: should this warn and keep trying to connect instead?
+  port_path_ = this->get_parameter("port_path").as_string();
+  baud_ = this->get_parameter("baud").as_int();
+  from_serial = this->get_parameter("from_serial").as_bool();
+  rtcm_path = this->get_parameter("data_path").as_string();
+
+  if (!from_serial && !fs::exists(rtcm_path)) {
+    throw std::runtime_error("RTCM data file not found.");
+  }
+
+  if (from_serial && !fs::exists(port_path_)) {      // todo: should this warn and keep trying to connect instead?
     throw std::runtime_error("Serial connection not found. Check that USB is plugged in.");
   }
 
-  if (from_serial_) {
-    serial_port = std::make_shared<serial::Serial>(port_path, baud, serial::Timeout::simpleTimeout(1000));
+  if (from_serial) {
+    serial_port = std::make_shared<serial::Serial>(port_path_, baud_, serial::Timeout::simpleTimeout(1000));
   } else {
     serial_port = nullptr;    // don't need serial port if reading from file
   }
@@ -27,17 +36,20 @@ CpoFrontEnd::CpoFrontEnd()
 
   // clear anything in serial buffer
   usleep(50000);
-  if (from_serial_) {
+  if (from_serial) {
     serial_port->flushInput();
   }
 
   init_rtcm(&rtcm);
 
-  // todo: rosparam
-
-  long approximate_time = std::time(nullptr);     // todo: switch to this when online
-//  approximate_time = 1613000000;      // setting manually for development   FEB10
-  approximate_time = 1613400000;      // setting manually for development   FEB15
+  long temp_time = this->get_parameter("approximate_time").as_int();
+  long approximate_time;
+  if (temp_time < 0) {
+    // setting to negative value indicates we want to use the live time
+    approximate_time = std::time(nullptr);
+  } else {
+    approximate_time = temp_time;
+  }
 
   rtcm.time = {.time = approximate_time};
 
@@ -107,7 +119,7 @@ void CpoFrontEnd::updateCodePos(double *rr) {
 void CpoFrontEnd::publishTdcp(const cpo_interfaces::msg::TDCP &message) {
   publisher_->publish(message);
 
-  if (!from_serial_){
+  if (!from_serial) {
     usleep(0.2e6);      // sleep to replay at ~5x when reading data from file
   }
 }
