@@ -34,8 +34,8 @@ Eigen::Matrix<double, 1, 1> TdcpErrorEval::evaluate() const {
   const Eigen::Matrix3d& C_ag = T_ag.C_ba();
   double rho_1a = r_1a_ing_ata_.norm();
   double rho_2a = r_2a_ing_ata_.norm();
-  double rho_1b = (r_1a_ing_atb_ - C_ag * r).norm();
-  double rho_2b = (r_2a_ing_atb_ - C_ag * r).norm();
+  double rho_1b = (r_1a_ing_atb_ - C_ag.transpose() * r).norm();
+  double rho_2b = (r_2a_ing_atb_ - C_ag.transpose() * r).norm();
 
   double rho_dd = (rho_2b - rho_2a) - (rho_1b - rho_1a);
   double error = phi_dd_ - rho_dd;
