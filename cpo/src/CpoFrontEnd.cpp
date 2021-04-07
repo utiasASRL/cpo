@@ -21,7 +21,8 @@ CpoFrontEnd::CpoFrontEnd(const std::string &port_path, unsigned long baud)
   init_rtcm(&rtcm);
 
   long approximate_time = std::time(nullptr);     // todo: switch to this when online
-  approximate_time = 1613000000;      // setting manually for development
+//  approximate_time = 1613000000;      // setting manually for development   FEB10
+  approximate_time = 1613400000;      // setting manually for development   FEB15
 
   rtcm.time = {.time = approximate_time};
 

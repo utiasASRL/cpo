@@ -20,6 +20,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': ['listener = cpo_analysis.plot_from_msg:main',
-        ],
+                            'plot_file = cpo_analysis.plot_from_file:main',
+                            ],
     },
 )

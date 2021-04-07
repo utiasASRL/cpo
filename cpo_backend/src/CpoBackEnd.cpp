@@ -206,8 +206,8 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
     // append latest estimate to file
     std::ofstream outstream;
     outstream.open(results_path_, std::ofstream::out | std::ofstream::app);
-    const auto &t_n = msgs_.back().first.t_b;
-    const auto &t_n1 = msgs_.back().first.t_a;
+    double t_n = msgs_.back().first.t_b * 1e-9;
+    double t_n1 = msgs_.back().first.t_a * 1e-9;
     const auto r_ng_g = T_ng.r_ba_ina();
 
     // save times and global position for easy plotting

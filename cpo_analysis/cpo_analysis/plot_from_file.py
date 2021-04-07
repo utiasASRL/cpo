@@ -75,22 +75,18 @@ def main():
     plt.rc('axes', labelsize=12, titlesize=14)
     plt.rcParams["font.family"] = "serif"
 
-    dataset = "feb15a"
+    dataset = "feb15c"
 
-    csv_dir = "./../data/estimates"
-    csv_file = dataset + "_cpo.csv"       # todo - update
-    positions = np.genfromtxt(osp.join(csv_dir, csv_file), delimiter=',', skip_header=3)
-    interval = np.genfromtxt(osp.join(csv_dir, csv_file), delimiter=',', skip_header=1, max_rows=1)
-
+    csv_dir = "/home/ben/CLionProjects/ros2-ws/src/cpo_analysis/data/estimates/"    # todo: non-hard-coded-path
+    csv_file = "cpo.csv"
     enu_origin = np.genfromtxt(osp.join(csv_dir, csv_file), delimiter=',', max_rows=1)
+    estimates = np.genfromtxt(osp.join(csv_dir, csv_file), delimiter=',', skip_header=1)
 
     # get start and end time of SWF data to get correct section from Doppler, ground truth
-    start_time = safe_float(interval[0])
-    end_time = safe_float(interval[1])
-    # start_time = 0
-    # end_time = 29999999999
+    start_time = safe_float(estimates[0, 0])
+    end_time = safe_float(estimates[-1, 0])
 
-    gt_dir = "./../data/groundtruth/"
+    gt_dir = "/home/ben/CLionProjects/ros2-ws/src/cpo_analysis/data/groundtruth/"
     gt_file = dataset + "_gga.ASC"
     if dataset[:5] == "feb10":
         day = 2144 * 7 + 3  # Feb.10/21
@@ -107,10 +103,10 @@ def main():
     # overhead plot
     fig1 = plt.figure(1, figsize=[9, 4.5])
     fig1.subplots_adjust(left=0.10, right=0.97, bottom=0.10, top=0.92)
-    plt.plot(r_gt[:, 1] - r_gt[0, 1], r_gt[:, 2] - r_gt[0, 2], label='GPS Ground Truth', c='C0', alpha=0.5)
+    # plt.plot(r_gt[:, 1] - r_gt[0, 1], r_gt[:, 2] - r_gt[0, 2], label='GPS Ground Truth', c='C0', alpha=0.5)
     plt.plot(r_rtk[:, 1] - r_gt[0, 1], r_rtk[:, 2] - r_gt[0, 2], label='RTK Ground Truth', c='C0')
 
-    plt.plot(positions[:, 1] - positions[0, 1], positions[:, 2] - positions[0, 2], label='Estimated', c='C1')
+    plt.plot(estimates[:, 2] - estimates[0, 2], estimates[:, 3] - estimates[0, 3], label='Estimated', c='C1')
 
     plt.axis('equal')
     plt.title('Overhead View - {0}'.format(dataset))
