@@ -26,6 +26,19 @@ target_include_directories(cpo_steam_extensions PUBLIC
         ${lgmath_INCLUDE_DIRS}
         ${steam_INCLUDE_DIRS})
 
+install(
+        DIRECTORY include/
+        DESTINATION include
+)
+
+install(
+        TARGETS cpo_steam_extensions
+        LIBRARY DESTINATION lib
+        ARCHIVE DESTINATION lib
+        RUNTIME DESTINATION bin
+        INCLUDES DESTINATION include
+)
+
 add_executable(cpo_backend src/main.cpp src/CpoBackEnd.cpp src/steam_extensions/TdcpErrorEval.cpp)
 ament_target_dependencies(cpo_backend
         Eigen3
@@ -43,5 +56,9 @@ target_link_libraries(cpo_backend
         steam
         cpo_steam_extensions
         ${CMAKE_THREAD_LIBS_INIT})
+
+install(TARGETS
+        cpo_backend
+        DESTINATION lib/${PROJECT_NAME})
 
 ament_package()

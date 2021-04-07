@@ -37,10 +37,10 @@ int main(int argc, char **argv) {
 
     if (!bytes_read) continue;
 #else
-  auto fp = fopen("/home/ben/CLionProjects/gpso/data/rtcm3/feb10a.BIN", "r");
+  auto fp = fopen("/home/ben/CLionProjects/gpso/data/rtcm3/feb15c.BIN", "r");
 
   int data_int;
-  while ((data_int = fgetc(fp)) != EOF) {
+  while ((data_int = fgetc(fp)) != EOF && rclcpp::ok()) {
     byte_in = data_int;
     size_t bytes_read = 0;
 #endif

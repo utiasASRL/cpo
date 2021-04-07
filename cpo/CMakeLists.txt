@@ -26,6 +26,19 @@ add_library(rtklib ${RTK_LIB_DIRECTORY}/src/rtkcmn.c
         ${RTK_LIB_DIRECTORY}/src/preceph.c
         )
 
+install(
+        DIRECTORY include/
+        DESTINATION include
+)
+
+install(
+        TARGETS rtklib
+        LIBRARY DESTINATION lib
+        ARCHIVE DESTINATION lib
+        RUNTIME DESTINATION bin
+        INCLUDES DESTINATION include
+)
+
 add_executable(cpo src/main.cpp src/CpoFrontEnd.cpp src/SatelliteObs.cpp)
 ament_target_dependencies(cpo rclcpp cpo_interfaces)
 target_include_directories(cpo PUBLIC ${RTK_LIB_DIRECTORY}/src ${EIGEN3_INCLUDE_DIR} include)
@@ -33,5 +46,11 @@ target_link_libraries(cpo serial rtklib)
 
 add_executable(replay_RTCM src/replay_rtcm.cpp)
 target_link_libraries(replay_RTCM serial)
+
+
+install(TARGETS
+        cpo
+        replay_RTCM
+        DESTINATION lib/${PROJECT_NAME})
 
 ament_package()
