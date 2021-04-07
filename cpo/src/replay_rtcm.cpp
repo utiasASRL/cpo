@@ -21,7 +21,7 @@ int main() {
   int bytes_per_second = 1000;     // how fast to publish
 
   // configure serial port
-  unsigned long baud = 9600;
+  unsigned long baud = 57600;
   std::string port1_path = "/dev/ttyUSB1";
   if (!fs::exists(port1_path)) {
     throw std::runtime_error("Serial connection not found. Check that USB is plugged in.");

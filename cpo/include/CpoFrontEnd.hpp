@@ -10,8 +10,6 @@
 #include <SatelliteObs.hpp>
 #include <cpo_interfaces/msg/tdcp.hpp>
 
-#define FROM_FILE 1         // reads data from binary file rather than over serial port
-
 namespace fs = std::filesystem;
 
 /** \brief Class to read and process raw GNSS measurements.
@@ -21,7 +19,7 @@ class CpoFrontEnd : public rclcpp::Node {
  public:
 
   /** \brief Constructor */
-  CpoFrontEnd(const std::string &port_path, unsigned long baud);
+  CpoFrontEnd();
 
   /** \brief Calculate vector from previous code solution to satellite at given time
    * \param sat_no      The satellite PRN
@@ -67,10 +65,8 @@ class CpoFrontEnd : public rclcpp::Node {
     return prev_code_solution_;
   }
 
-#if !FROM_FILE
   /** \brief The serial port that listens for GNSS measurements */
-  serial::Serial serial_port;
-#endif
+  std::shared_ptr<serial::Serial> serial_port;
 
   /** \brief RTKLIB struct that stores observations, ephemerides */
   rtcm_t rtcm;
@@ -92,6 +88,12 @@ class CpoFrontEnd : public rclcpp::Node {
 
   /** \brief Track whether we've calculated a code solution yet */
   bool enu_origin_set = false;
+
+  /** \brief True if running live over serial, false if we are reading a logged dataset */
+  bool from_serial_;
+
+  /** Location to find binary RTCM file when reading logged data */
+  const char *rtcm_path_;
 
  private:
 

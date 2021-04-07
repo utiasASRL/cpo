@@ -4,21 +4,36 @@
 
 #include <CpoFrontEnd.hpp>
 
-CpoFrontEnd::CpoFrontEnd(const std::string &port_path, unsigned long baud)
-    : Node("cpo_front_end")
-#if !FROM_FILE
-, serial_port(port_path, baud, serial::Timeout::simpleTimeout(1000))
-#endif
-{
+CpoFrontEnd::CpoFrontEnd()
+    : Node("cpo_front_end") {
+
+  // serial port parameters
+  std::string port_path = "/dev/ttyUSB0";     // todo: rosparam stuff
+  unsigned long baud = 57600;     // default to 57600
+  from_serial_ = true;
+  rtcm_path_ = "/home/ben/CLionProjects/gpso/data/rtcm3/feb15c.BIN";    // todo: check path exists
+
+  if (from_serial_ && !fs::exists(port_path)) {          // todo: should this warn and keep trying to connect instead?
+    throw std::runtime_error("Serial connection not found. Check that USB is plugged in.");
+  }
+
+  if (from_serial_) {
+    serial_port = std::make_shared<serial::Serial>(port_path, baud, serial::Timeout::simpleTimeout(1000));
+  } else {
+    serial_port = nullptr;    // don't need serial port if reading from file
+  }
+
   publisher_ = this->create_publisher<cpo_interfaces::msg::TDCP>("tdcp", 10);
 
   // clear anything in serial buffer
   usleep(50000);
-#if !FROM_FILE
-  serial_port.flushInput();
-#endif
+  if (from_serial_) {
+    serial_port->flushInput();
+  }
 
   init_rtcm(&rtcm);
+
+  // todo: rosparam
 
   long approximate_time = std::time(nullptr);     // todo: switch to this when online
 //  approximate_time = 1613000000;      // setting manually for development   FEB10
@@ -92,9 +107,9 @@ void CpoFrontEnd::updateCodePos(double *rr) {
 void CpoFrontEnd::publishTdcp(const cpo_interfaces::msg::TDCP &message) {
   publisher_->publish(message);
 
-#if FROM_FILE
-  usleep(0.2e6);      // temporary: sleep while developing so have a chance to watch. Playing at ~5x
-#endif
+  if (!from_serial_){
+    usleep(0.2e6);      // sleep to replay at ~5x when reading data from file
+  }
 }
 
 void CpoFrontEnd::stepForward() {

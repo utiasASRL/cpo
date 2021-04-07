@@ -15,37 +15,30 @@ int main(int argc, char **argv) {
     tracelevel(trace_level);
   }
 
-  // serial port parameters
-  std::string port0_path = "/dev/ttyUSB0";
-  unsigned long baud = 57600;
+  CpoFrontEnd node;
 
-#if !FROM_FILE
-  if (!fs::exists(port0_path)) {          // todo: should this warn and keep trying to connect instead?
-    throw std::runtime_error("Serial connection not found. Check that USB is plugged in.");
-  }
-#endif
-
-  CpoFrontEnd node(port0_path, baud);
-
-  // read serial port
-  unsigned char byte_in;          // todo: add option to log raw RTCM to file?
-  size_t total_bytes_read = 0;
+  unsigned char byte_in;
   int rtcm_status;
-#if !FROM_FILE
-  while (true) {
-    size_t bytes_read = node.serial_port.read(&byte_in, 1);
 
-    if (!bytes_read) continue;
-#else
-  auto fp = fopen("/home/ben/CLionProjects/gpso/data/rtcm3/feb15c.BIN", "r");
+  _IO_FILE *fp;
+  if (!node.from_serial_) {
+    fp = fopen(node.rtcm_path_, "r");
+  }
 
-  int data_int;
-  while ((data_int = fgetc(fp)) != EOF && rclcpp::ok()) {
-    byte_in = data_int;
-    size_t bytes_read = 0;
-#endif
+  while (rclcpp::ok()) {
 
-    total_bytes_read += bytes_read;
+    if (node.from_serial_) {
+      // attempt to read byte from serial, if no data, continue
+      size_t bytes_read = node.serial_port->read(&byte_in, 1);    // todo: add option to log raw RTCM to file?
+      if (!bytes_read) continue;
+    } else {
+      // attempt to read byte from file, if at end-of-file, break
+      int data_int = fgetc(fp);
+      if (data_int == EOF)
+        break;
+      else
+        byte_in = data_int;
+    }
 
     rtcm_status = input_rtcm3(&(node.rtcm), byte_in);
 
@@ -184,8 +177,6 @@ int main(int argc, char **argv) {
       }
       node.eph_set_gps[current_eph_sat] = true;
     }
-
-    if (total_bytes_read > 4000 * 1024) break;      // temporary so doesn't complain about endless loops
   }
 
   rclcpp::shutdown();
