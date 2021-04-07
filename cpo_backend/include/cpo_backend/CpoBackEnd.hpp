@@ -42,8 +42,14 @@ class CpoBackEnd : public rclcpp::Node {
   /** \brief Subscriber for TDCP msgs */
   rclcpp::Subscription<cpo_interfaces::msg::TDCP>::SharedPtr subscription_;
 
+  /** \brief Publisher of integrated odometry in ENU frame
+   * \note Absolute accuracy of these poses will not be high after a long period of dead-reckoning but they are useful
+   * for plotting
+   * */
+  rclcpp::Publisher<geometry_msgs::msg::PoseWithCovariance>::SharedPtr enu_publisher_;
+
   /** \brief Publisher of odometry transforms (relative vehicle frame poses) */
-  rclcpp::Publisher<geometry_msgs::msg::PoseWithCovariance>::SharedPtr publisher_;
+  rclcpp::Publisher<geometry_msgs::msg::PoseWithCovariance>::SharedPtr vehicle_publisher_;
 
   /** \brief The fixed sensor-vehicle transform. Allows us to do estimation in the vehicle frame */
   steam::se3::FixedTransformEvaluator::ConstPtr tf_gps_vehicle_;

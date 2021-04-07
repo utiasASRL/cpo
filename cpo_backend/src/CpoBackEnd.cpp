@@ -15,7 +15,8 @@ CpoBackEnd::CpoBackEnd() : Node("cpo_back_end") {
   subscription_ = this->create_subscription<cpo_interfaces::msg::TDCP>(
       "tdcp", 10, std::bind(&CpoBackEnd::_tdcpCallback, this, std::placeholders::_1));
 
-  publisher_ = this->create_publisher<geometry_msgs::msg::PoseWithCovariance>("cpo_odometry", 10);
+  vehicle_publisher_ = this->create_publisher<geometry_msgs::msg::PoseWithCovariance>("cpo_odometry", 10);
+  enu_publisher_ = this->create_publisher<geometry_msgs::msg::PoseWithCovariance>("cpo_enu", 10);
 
   // set up receiver-vehicle transform. todo: hard-coded for now but eventually make this configurable
   Eigen::Matrix4d T_gps_vehicle_eigen = Eigen::Matrix4d::Identity();
@@ -178,16 +179,7 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
     // print final costs (for debugging/development)
     printCosts();
 
-    // get optimized transform and publish
-    lgmath::se3::Transformation pose = statevars.back()->getValue();
-    auto gn_solver = std::dynamic_pointer_cast<steam::GaussNewtonSolverBase>(solver_);
-    Eigen::Matrix<double, 6, 6> pose_covariance = gn_solver->queryCovariance(statevars.back()->getKey());
-    geometry_msgs::msg::PoseWithCovariance pose_msg = toPoseMsg(pose, pose_covariance);
-    publisher_->publish(pose_msg);
-
-    std::cout << "r_ba_ina: " << pose.r_ba_ina().transpose() << std::endl;
-    std::cout << "T_ba vec: " << pose.vec().transpose() << std::endl;
-
+    // update with optimized transforms
     for (uint i = 1; i < msgs_.size(); ++i) {
       msgs_[i].second = statevars[i]->getValue() * statevars[i - 1]->getValue().inverse();       // T_21 = T_20 * inv(T_10)
       std::cout << "Set edge " << i << " to (vec) " << msgs_[i].second.vec().transpose() << std::endl;
@@ -197,6 +189,17 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
     init_pose_ = T_0g_statevar->getValue();   // todo: may need to update
 
     std::cout << "init_pose_ vec: " << init_pose_.vec().transpose() << std::endl;
+
+    // publish
+    Eigen::Matrix<double, 6, 6> dummy_covariance = Eigen::Matrix<double, 6, 6>::Identity();   // todo: get correct cov
+    geometry_msgs::msg::PoseWithCovariance relative_pose_msg = toPoseMsg(msgs_.back().second, dummy_covariance);
+    vehicle_publisher_->publish(relative_pose_msg);
+    lgmath::se3::Transformation T_ng = statevars.back()->getValue() * init_pose_;
+    geometry_msgs::msg::PoseWithCovariance enu_pose_msg = toPoseMsg(T_ng, dummy_covariance);
+    enu_publisher_->publish(enu_pose_msg);
+
+    std::cout << "r_ng_ing: " << T_ng.r_ba_ina().transpose() << std::endl;
+    std::cout << "T_ng vec: " << T_ng.vec().transpose() << std::endl;
 
     first_window_ = false;
   }
