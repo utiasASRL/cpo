@@ -173,6 +173,7 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
     steam::DoglegGaussNewtonSolver::Params params;
     params.verbose = steam_verbose_;
     params.maxIterations = steam_max_iterations_;
+    params.absoluteCostChangeThreshold = 2e-2;        // workaround for gradient descent fails
     solver_.reset(new steam::DoglegGaussNewtonSolver(problem_.get(), params));
     solver_->optimize();
 
@@ -180,8 +181,8 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
     printCosts(true);
 
     // update with optimized transforms
-    for (uint i = 1; i < msgs_.size(); ++i) {
-      msgs_[i].second = statevars[i]->getValue() * statevars[i - 1]->getValue().inverse();  // T_21 = T_20 * inv(T_10)
+    for (uint i = 0; i < msgs_.size(); ++i) {
+      msgs_[i].second = statevars[i + 1]->getValue() * statevars[i]->getValue().inverse();  // T_21 = T_20 * inv(T_10)
     }
 
     // update our orientation estimate
