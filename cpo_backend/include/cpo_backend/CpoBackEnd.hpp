@@ -19,8 +19,10 @@ class CpoBackEnd : public rclcpp::Node {
   /** \brief Get parameters from ROS2 and set appropriate fields */
   void getParams();
 
-  /** \brief Helper/debugger function that prints total cost and number of terms for each group of cost terms */
-  void printCosts();
+  /** \brief Helper/debugger function that prints total cost and number of terms for each group of cost terms
+   * \param final  True if these are the final costs, if false assumed to be initial costs
+   * */
+  void printCosts(bool final);
 
   /** \brief Helper function */
   static Eigen::Vector3d toEigenVec3d(const geometry_msgs::msg::Vector3 &ros_vec);

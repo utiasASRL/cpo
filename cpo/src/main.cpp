@@ -57,7 +57,7 @@ int main(int argc, char **argv) {
         }
       }
 
-      std::cout << node.eph_count_gps << "   Found " << node.curr_sats->size() << " satellites!   "; // debugging
+      std::cout << "Observed " << node.curr_sats->size() << " satellites:  ";
       for (const auto &sat : *node.curr_sats) std::cout << (int) sat.first << ", ";
       std::cout << std::endl;
 

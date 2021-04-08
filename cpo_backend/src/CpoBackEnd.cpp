@@ -8,6 +8,7 @@ using TransformStateVar = steam::se3::TransformStateVar;
 using TransformStateEvaluator = steam::se3::TransformStateEvaluator;
 using TransformEvaluator = steam::se3::TransformEvaluator;
 using SteamTrajVar = steam::se3::SteamTrajVar;
+using SteamTrajInterface = steam::se3::SteamTrajInterface;
 using VectorSpaceStateVar = steam::VectorSpaceStateVar;
 using PositionEvaluator = steam::se3::PositionEvaluator;
 
@@ -33,7 +34,7 @@ CpoBackEnd::CpoBackEnd() : Node("cpo_back_end") {
 void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in) {
 
   uint n = msg_in->pairs.size();
-  std::cout << "Found " << n << " sat pairs." << std::endl;
+  std::cout << "Received " << n << " satellite pairs." << std::endl;
 
   addMsgToWindow(msg_in);
 
@@ -76,14 +77,13 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
 
     lgmath::se3::Transformation T_k0_est;
     // loop over window to add states for other poses
-    for (uint i = 0; i < msgs_.size(); ++i) {
-
-      T_k0_est = msgs_[i].second * T_k0_est;
+    for (auto & msg : msgs_) {
+      T_k0_est = msg.second * T_k0_est;     // k has been incremented so update T_k0
 
       TransformStateVar::Ptr temp_statevar(new TransformStateVar(T_k0_est));
       TransformStateEvaluator::Ptr temp_pose = TransformStateEvaluator::MakeShared(temp_statevar);
       VectorSpaceStateVar::Ptr temp_velocity = VectorSpaceStateVar::Ptr(new VectorSpaceStateVar(plausible_vel));
-      SteamTrajVar temp(steam::Time((int64_t)msgs_[i].first.t_b), temp_pose, temp_velocity);
+      SteamTrajVar temp(steam::Time((int64_t)msg.first.t_b), temp_pose, temp_velocity);
       statevars.push_back(temp_statevar);
       traj_states.push_back(temp);
 
@@ -93,7 +93,6 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
 
     // add TDCP terms
     for (uint k = 0; k < msgs_.size(); ++k) {
-
       TransformEvaluator::ConstPtr T_k1k = steam::se3::compose(vehicle_poses[k + 1], steam::se3::inverse(vehicle_poses[k]));
       PositionEvaluator::ConstPtr r_ba_ina(new PositionEvaluator(T_k1k));
 
@@ -132,7 +131,7 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
         pp_loss_function_));
 
     steam::BaseNoiseModel<4>::Ptr nonholonomic_noise_model(new steam::StaticNoiseModel<4>(nonholonomic_cov_));
-    trajectory_ = std::make_shared<steam::se3::SteamTrajInterface>(steam::se3::SteamTrajInterface(smoothing_factor_information_, true));
+    trajectory_ = std::make_shared<SteamTrajInterface>(SteamTrajInterface(smoothing_factor_information_, true));
 
     // loop through velocity state variables
     for (const auto &traj_state : traj_states) {
@@ -168,7 +167,7 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
     }
 
     // print initial costs (for debugging/development)
-    printCosts();
+    printCosts(false);
 
     // setup solver and optimize
     steam::DoglegGaussNewtonSolver::Params params;
@@ -178,18 +177,15 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
     solver_->optimize();
 
     // print final costs (for debugging/development)
-    printCosts();
+    printCosts(true);
 
     // update with optimized transforms
     for (uint i = 1; i < msgs_.size(); ++i) {
-      msgs_[i].second = statevars[i]->getValue() * statevars[i - 1]->getValue().inverse();       // T_21 = T_20 * inv(T_10)
-      std::cout << "Set edge " << i << " to (vec) " << msgs_[i].second.vec().transpose() << std::endl;
+      msgs_[i].second = statevars[i]->getValue() * statevars[i - 1]->getValue().inverse();  // T_21 = T_20 * inv(T_10)
     }
 
     // update our orientation estimate
     init_pose_ = T_0g_statevar->getValue();
-
-    std::cout << "init_pose_ vec: " << init_pose_.vec().transpose() << std::endl;
 
     // publish
     Eigen::Matrix<double, 6, 6> dummy_covariance = Eigen::Matrix<double, 6, 6>::Identity();   // todo: get correct cov
@@ -200,14 +196,11 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
     geometry_msgs::msg::PoseWithCovariance enu_pose_msg = toPoseMsg(T_ng, dummy_covariance);
     enu_publisher_->publish(enu_pose_msg);
 
-    std::cout << "r_ng_ing: " << T_ng.r_ba_ina().transpose() << std::endl;
-    std::cout << "T_ng vec: " << T_ng.vec().transpose() << std::endl;
-
     // append latest estimate to file
     std::ofstream outstream;
     outstream.open(results_path_, std::ofstream::out | std::ofstream::app);
-    double t_n = msgs_.back().first.t_b * 1e-9;
-    double t_n1 = msgs_.back().first.t_a * 1e-9;
+    double t_n = (double)msgs_.back().first.t_b * 1e-9;
+    double t_n1 = (double)msgs_.back().first.t_a * 1e-9;
     const auto r_ng_g = T_ng.r_ba_ina();
 
     // save times and global position for easy plotting
@@ -320,8 +313,9 @@ void CpoBackEnd::resetProblem() {
   }
 }
 
-void CpoBackEnd::printCosts() {
-  std::cout << " === Costs === " << std::endl;
+void CpoBackEnd::printCosts(bool final) {
+  std::string stage_str = final ? "Final" : "Initial";
+  std::cout << " === " << stage_str << " Costs === " << std::endl;
   std::cout << "Carrier Phase:       " << tdcp_cost_terms_->cost() << "        Terms:  "
             << tdcp_cost_terms_->numCostTerms() << std::endl;
   std::cout << "Nonholonomic:        " << nonholonomic_cost_terms_->cost() << "        Terms:  "

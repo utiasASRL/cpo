@@ -40,9 +40,8 @@ class TdcpSubscriber(Node):
 
   def tdcp_callback(self, msg):
     self.tdcp_msg_count += 1
-    self.get_logger().info(
-      'Found ENU position {0:.2f}, {1:.2f}, {2:.2f} [m] {3}'.format(msg.enu_pos.x, msg.enu_pos.y, msg.enu_pos.z,
-                                                                    self.tdcp_msg_count))
+    print('Code solution     {0:.2f}, {1:.2f}, {2:.2f} [m] {3}'.format(msg.enu_pos.x, msg.enu_pos.y, msg.enu_pos.z,
+                                                                       self.tdcp_msg_count))
     point = (msg.enu_pos.x, msg.enu_pos.y)
 
     # plot East-North code solutions as we go
@@ -55,9 +54,8 @@ class TdcpSubscriber(Node):
 
   def enu_est_callback(self, msg):
     self.enu_msg_count += 1
-    self.get_logger().info(
-      'Est. ENU position  {0:.2f}, {1:.2f}, {2:.2f} [m] {3}'.format(msg.pose.position.x, msg.pose.position.y,
-                                                                    msg.pose.position.z, self.enu_msg_count))
+    print('Est. ENU position {0:.2f}, {1:.2f}, {2:.2f} [m] {3}'.format(msg.pose.position.x, msg.pose.position.y,
+                                                                       msg.pose.position.z, self.enu_msg_count))
     point = (msg.pose.position.x, msg.pose.position.y)
 
     # plot East-North estimates as we go
