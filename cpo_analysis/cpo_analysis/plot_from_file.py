@@ -109,9 +109,9 @@ def main():
     plt.plot(estimates[:, 2] - estimates[0, 2], estimates[:, 3] - estimates[0, 3], label='Estimated', c='C1')
 
     plt.axis('equal')
-    plt.title('Overhead View - {0}'.format(dataset))
-    plt.xlabel('x (m)')
-    plt.ylabel('y (m)')
+    plt.title('Overhead View - {0} Dataset'.format(dataset))
+    plt.xlabel('Easting (m)')
+    plt.ylabel('Northing (m)')
     plt.legend()
 
     plt.show()

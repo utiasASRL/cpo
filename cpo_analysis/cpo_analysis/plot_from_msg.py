@@ -11,13 +11,14 @@ plt.ion()  # make plotting interactive
 
 # set up overhead plot
 fig, ax = plt.subplots()
-plot = ax.scatter([], [], c='k')
-plot2 = ax.scatter([], [], c='g')
+plot = ax.scatter([], [], c='C5', label='Code solutions')
+plot2 = ax.scatter([], [], c='C2', label='TDCP Estimates')
 ax.set_xlim(-5, 5)
 ax.set_ylim(-5, 5)
-
-
-# todo: make pretty
+ax.set_title('Live Overhead View')
+ax.set_xlabel('Easting (m)')
+ax.set_ylabel('Northing (m)')
+ax.legend(loc="upper right")
 
 
 class TdcpSubscriber(Node):
@@ -36,7 +37,6 @@ class TdcpSubscriber(Node):
       self.enu_est_callback,
       10)
     self.enu_est_sub  # prevent unused variable warning
-    # todo: add PoseWithCovariance subscriber
 
   def tdcp_callback(self, msg):
     self.tdcp_msg_count += 1
@@ -49,8 +49,8 @@ class TdcpSubscriber(Node):
     array = plot.get_offsets()
     array = np.append(array, [point], axis=0)
     plot.set_offsets(array)
-    ax.set_xlim(array[:, 0].min() - 1, array[:, 0].max() + 1)
-    ax.set_ylim(array[:, 1].min() - 1, array[:, 1].max() + 1)
+    ax.set_xlim(array[:, 0].min() - 5, array[:, 0].max() + 5)
+    ax.set_ylim(array[:, 1].min() - 5, array[:, 1].max() + 5)
     fig.canvas.draw()
 
   def enu_est_callback(self, msg):

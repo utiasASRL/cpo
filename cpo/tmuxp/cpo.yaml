@@ -1,0 +1,22 @@
+# The tmux session name, has to be unique
+session_name: cpo
+
+# Can run a script before tmuxp starts building the session
+shell_command_before:
+  - "source ./../../install/setup.bash"     # assumes we are in tmuxp folder
+
+# The default start directory for the full session, ./ is this file's location
+start_directory: ./../../..
+
+# Add commands to bash history
+suppress_history: false
+
+# This is where we list all the stuff we want to run
+windows:
+  - window_name: cpo_main
+    layout: main-horizontal
+    panes:
+      - ros2 run cpo_backend cpo_backend --ros-args --params-file ./src/cpo_backend/config/default.yaml
+      - ros2 run cpo cpo --ros-args --params-file ./src/cpo/config/default.yaml
+      - ros2 run cpo_analysis listener
+      - ros2 topic list
