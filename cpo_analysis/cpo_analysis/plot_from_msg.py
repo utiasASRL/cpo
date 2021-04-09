@@ -3,22 +3,25 @@ from rclpy.node import Node
 
 import matplotlib.pyplot as plt
 import numpy as np
+import seaborn as sns
 
 from cpo_interfaces.msg import TDCP
 from geometry_msgs.msg import PoseWithCovariance
 
+sns.set_style("whitegrid")
 plt.ion()  # make plotting interactive
 
 # set up overhead plot
-fig, ax = plt.subplots()
-plot = ax.scatter([], [], c='C5', label='Code solutions')
-plot2 = ax.scatter([], [], c='C2', label='TDCP Estimates')
+fig, ax = plt.subplots(figsize=[8, 4])
+plot = ax.scatter([], [], c='C5', label='Code solutions', s=1.5)
+plot2 = ax.scatter([], [], c='C1', label='TDCP Estimates', s=1.5)
 ax.set_xlim(-5, 5)
 ax.set_ylim(-5, 5)
 ax.set_title('Live Overhead View')
 ax.set_xlabel('Easting (m)')
 ax.set_ylabel('Northing (m)')
 ax.legend(loc="upper right")
+ax.set_aspect('equal')
 
 
 class TdcpSubscriber(Node):

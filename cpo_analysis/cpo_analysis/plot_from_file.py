@@ -5,6 +5,7 @@ import os.path as osp
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
+from math import sqrt
 from pyproj import Proj
 import seaborn as sns
 
@@ -47,6 +48,7 @@ def read_gpgga(gga_path, gps_day, proj_origin, start_time=0.0, end_time=49999999
     with open(gga_path, newline='') as resultfile:
         spamreader = csv.reader(resultfile, delimiter=',', quotechar='|')
         tmp = []
+        distance_along_path = 0
         for i, row in enumerate(spamreader):
             if row[0] != "$GPGGA":
                 continue
@@ -65,7 +67,13 @@ def read_gpgga(gga_path, gps_day, proj_origin, start_time=0.0, end_time=49999999
                 time_of_day[2:4]) * 60.0 + safe_float(time_of_day[4:])
 
             if start_time <= timestamp <= end_time:
-                tmp.append([timestamp, x, y, z, fix_type, long, lat])
+                if len(tmp) > 0:
+                    prev_x = tmp[-1][1]
+                    prev_y = tmp[-1][2]
+                    dist_added = sqrt((x - prev_x) ** 2 + (y - prev_y) ** 2)
+                    distance_along_path += dist_added
+
+                tmp.append([timestamp, x, y, z, fix_type, long, lat, distance_along_path])
 
     return np.array(tmp)
 
@@ -75,7 +83,7 @@ def main():
     plt.rc('axes', labelsize=12, titlesize=14)
     plt.rcParams["font.family"] = "serif"
 
-    dataset = "feb15c"
+    dataset = "feb15c"          # todo: this should update automatically
 
     csv_dir = "/home/ben/CLionProjects/ros2-ws/src/cpo_analysis/data/estimates/"    # todo: non-hard-coded-path
     csv_file = "cpo.csv"
@@ -113,6 +121,37 @@ def main():
     plt.xlabel('Easting (m)')
     plt.ylabel('Northing (m)')
     plt.legend()
+
+    # error plot
+    tmp = []
+    for row in r_gt:
+        idx_np = np.where(estimates[:, 0] == row[0])
+        if idx_np[0].size != 0:
+            idx = safe_int(idx_np[0][0])
+            tmp.append([estimates[idx, 0],  # GPS ref. timestamp
+                        row[1],  # groundtruth x (downsampled)
+                        row[2],  # "" y
+                        row[3],  # "" z
+                        (estimates[idx, 2] - estimates[0, 2]) - (row[1] - r_gt[0, 1]),  # estimator error x
+                        (estimates[idx, 3] - estimates[0, 3]) - (row[2] - r_gt[0, 2]),  # "" y
+                        (estimates[idx, 4] - estimates[0, 4]) - (row[3] - r_gt[0, 3]),  # "" z
+                        row[7],  # distance along path      (placeholder)
+                        ])
+    relative_errors = np.array(tmp)
+
+    fig2, ax2 = plt.subplots(nrows=3, ncols=1, figsize=[8, 9])
+    ax2[0].plot(relative_errors[:, 7] - relative_errors[0, 7], relative_errors[:, 4])       # x errors
+    ax2[1].plot(relative_errors[:, 7] - relative_errors[0, 7], relative_errors[:, 5])       # y errors
+    ax2[2].plot(relative_errors[:, 7] - relative_errors[0, 7], np.sqrt(relative_errors[:, 4]**2 + relative_errors[:, 5]**2))       # total errors
+
+    ax2[0].set_title('Position Errors wrt Ground Truth - {0}'.format(dataset))
+    ax2[2].set_xlabel('Distance Along Path (m)')
+    ax2[0].set_ylabel('x Error (m)')
+    ax2[0].set_ylim([-1.6, 1.6])
+    ax2[1].set_ylabel('y Error (m)')
+    ax2[1].set_ylim([-1.6, 1.6])
+    ax2[2].set_ylabel('2D Position Error (m)')
+    ax2[2].set_ylim([0, 2])
 
     plt.show()
 
