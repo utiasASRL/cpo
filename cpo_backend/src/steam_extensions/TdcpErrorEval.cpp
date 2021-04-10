@@ -1,22 +1,23 @@
-
 #include <TdcpErrorEval.hpp>
+
+#include <utility>
 
 namespace steam {
 
 TdcpErrorEval::TdcpErrorEval(const double phi_dd,
                              se3::PositionEvaluator::ConstPtr &r_ba_ina,
                              se3::TransformEvaluator::ConstPtr &T_ag,
-                             const Eigen::Vector3d &r_1a_ing_ata,
-                             const Eigen::Vector3d &r_1a_ing_atb,
-                             const Eigen::Vector3d &r_2a_ing_ata,
-                             const Eigen::Vector3d &r_2a_ing_atb)
+                             Eigen::Vector3d r_1a_ing_ata,
+                             Eigen::Vector3d r_1a_ing_atb,
+                             Eigen::Vector3d r_2a_ing_ata,
+                             Eigen::Vector3d r_2a_ing_atb)
     : phi_dd_(phi_dd),
       r_ba_ina_(r_ba_ina),
       T_ag_(T_ag),
-      r_1a_ing_ata_(r_1a_ing_ata),
-      r_1a_ing_atb_(r_1a_ing_atb),
-      r_2a_ing_ata_(r_2a_ing_ata),
-      r_2a_ing_atb_(r_2a_ing_atb),
+      r_1a_ing_ata_(std::move(r_1a_ing_ata)),
+      r_1a_ing_atb_(std::move(r_1a_ing_atb)),
+      r_2a_ing_ata_(std::move(r_2a_ing_ata)),
+      r_2a_ing_atb_(std::move(r_2a_ing_atb)),
       u_a21_((r_2a_ing_ata_ - r_1a_ing_ata_).normalized()) {
 }
 
@@ -31,7 +32,7 @@ Eigen::Matrix<double, 1, 1> TdcpErrorEval::evaluate() const {
   EvalTreeHandle<Eigen::Vector3d> blkAutoEvalPosition = r_ba_ina_->getBlockAutomaticEvaluation();
   const Eigen::Vector3d &r = blkAutoEvalPosition.getValue();
 
-  const Eigen::Matrix3d& C_ag = T_ag.C_ba();
+  const Eigen::Matrix3d &C_ag = T_ag.C_ba();
   double rho_1a = r_1a_ing_ata_.norm();
   double rho_2a = r_2a_ing_ata_.norm();
   double rho_1b = (r_1a_ing_atb_ - C_ag.transpose() * r).norm();
@@ -84,10 +85,10 @@ Eigen::Matrix<double, 1, 1> TdcpErrorEval::evaluate(const Eigen::Matrix<double, 
         -r(1), r(0), 0;
 
     // Get Jacobians
-    Eigen::Matrix<double, 1, 3> J_2 = u_a21_.transpose() * T_ag.C_ba().transpose() * r_hat;     // todo: double check this stuff
+    Eigen::Matrix<double, 1, 3> J_2 = u_a21_.transpose() * T_ag.C_ba().transpose() * r_hat;
 
     Eigen::Matrix<double, 1, 6> newLhs;
-    newLhs << 0, 0, 0,  lhs * J_2;
+    newLhs << 0, 0, 0, lhs * J_2;
     T_ag_->appendBlockAutomaticJacobians(newLhs, blkAutoEvalTransform.getRoot(), jacs);
   }
 
