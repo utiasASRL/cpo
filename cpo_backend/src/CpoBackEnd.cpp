@@ -55,7 +55,7 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
     std::vector<TransformStateVar::Ptr> statevars;
 
     // keep track of states composed with frame transform for use in TDCP terms
-    std::vector<TransformEvaluator::ConstPtr> vehicle_poses;
+    std::vector<TransformEvaluator::ConstPtr> receiver_poses;
     std::vector<TransformEvaluator::ConstPtr> enu_poses;
 
     // set up T_0g state
@@ -71,13 +71,14 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
       statevars.push_back(temp_statevar_a);
       traj_states.push_back(temp_a);
 
-      vehicle_poses.emplace_back(temp_pose_a);
-      enu_poses.emplace_back(steam::se3::compose(temp_pose_a, T_0g));
+      TransformEvaluator::Ptr rec_pose_a = steam::se3::compose(tf_gps_vehicle_, temp_pose_a);
+      receiver_poses.emplace_back(rec_pose_a);
+      enu_poses.emplace_back(steam::se3::compose(rec_pose_a, T_0g));
     }
 
     lgmath::se3::Transformation T_k0_est;
     // loop over window to add states for other poses
-    for (auto & msg : msgs_) {
+    for (auto &msg : msgs_) {
       T_k0_est = msg.second * T_k0_est;     // k has been incremented so update T_k0
 
       TransformStateVar::Ptr temp_statevar(new TransformStateVar(T_k0_est));
@@ -87,13 +88,16 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
       statevars.push_back(temp_statevar);
       traj_states.push_back(temp);
 
-      vehicle_poses.emplace_back(temp_pose);                                        // T_k0
-      enu_poses.emplace_back(steam::se3::compose(temp_pose, T_0g));   // T_kg = T_k0 * T_0g
+      // T_s0 = T_sv * T_v0
+      TransformEvaluator::Ptr rec_pose = steam::se3::compose(tf_gps_vehicle_, temp_pose);
+      receiver_poses.emplace_back(rec_pose);                                      // T_k0
+      enu_poses.emplace_back(steam::se3::compose(rec_pose, T_0g));   // T_kg = T_k0 * T_0g
     }
 
     // add TDCP terms
     for (uint k = 0; k < msgs_.size(); ++k) {
-      TransformEvaluator::ConstPtr T_k1k = steam::se3::compose(vehicle_poses[k + 1], steam::se3::inverse(vehicle_poses[k]));
+      TransformEvaluator::ConstPtr
+          T_k1k = steam::se3::compose(receiver_poses[k + 1], steam::se3::inverse(receiver_poses[k]));
       PositionEvaluator::ConstPtr r_ba_ina(new PositionEvaluator(T_k1k));
 
       // using constant covariance here for now
@@ -200,12 +204,16 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
     // append latest estimate to file
     std::ofstream outstream;
     outstream.open(results_path_, std::ofstream::out | std::ofstream::app);
-    double t_n = (double)msgs_.back().first.t_b * 1e-9;
-    double t_n1 = (double)msgs_.back().first.t_a * 1e-9;
+    double t_n = (double) msgs_.back().first.t_b * 1e-9;
+    double t_n1 = (double) msgs_.back().first.t_a * 1e-9;
     const auto r_ng_g = T_ng.r_ba_ina();
+
+    // also get receiver position estimate for comparing to ground truth
+    auto r_sg_g = (tf_gps_vehicle_->evaluate() * T_ng).r_ba_ina();
 
     // save times and global position for easy plotting
     outstream << std::setprecision(12) << t_n << ", " << t_n1 << ", ";
+    outstream << r_sg_g[0] << ", " << r_sg_g[1] << ", " << r_sg_g[2] << ", ";
     outstream << r_ng_g[0] << ", " << r_ng_g[1] << ", " << r_ng_g[2] << ", ";
 
     // save full transformations as well. Transpose needed to print in row-major order

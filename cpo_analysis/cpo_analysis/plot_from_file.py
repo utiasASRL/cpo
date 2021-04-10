@@ -110,7 +110,7 @@ def main():
 
     # overhead plot
     fig1 = plt.figure(1, figsize=[9, 4.5])
-    fig1.subplots_adjust(left=0.10, right=0.97, bottom=0.10, top=0.92)
+    fig1.subplots_adjust(left=0.10, bottom=0.10, right=0.97, top=0.92)
     # plt.plot(r_gt[:, 1] - r_gt[0, 1], r_gt[:, 2] - r_gt[0, 2], label='GPS Ground Truth', c='C0', alpha=0.5)
     plt.plot(r_rtk[:, 1] - r_gt[0, 1], r_rtk[:, 2] - r_gt[0, 2], label='RTK Ground Truth', c='C0')
 
@@ -139,10 +139,11 @@ def main():
                         ])
     relative_errors = np.array(tmp)
 
-    fig2, ax2 = plt.subplots(nrows=3, ncols=1, figsize=[8, 9])
+    fig2, ax2 = plt.subplots(nrows=3, ncols=1, figsize=[8, 8])
+    fig2.subplots_adjust(left=0.10, bottom=0.06, right=0.96, top=0.96)
     ax2[0].plot(relative_errors[:, 7] - relative_errors[0, 7], relative_errors[:, 4])       # x errors
     ax2[1].plot(relative_errors[:, 7] - relative_errors[0, 7], relative_errors[:, 5])       # y errors
-    ax2[2].plot(relative_errors[:, 7] - relative_errors[0, 7], np.sqrt(relative_errors[:, 4]**2 + relative_errors[:, 5]**2))       # total errors
+    ax2[2].plot(relative_errors[:, 7] - relative_errors[0, 7], np.sqrt(relative_errors[:, 4]**2 + relative_errors[:, 5]**2))       # planar errors
 
     ax2[0].set_title('Position Errors wrt Ground Truth - {0}'.format(dataset))
     ax2[2].set_xlabel('Distance Along Path (m)')

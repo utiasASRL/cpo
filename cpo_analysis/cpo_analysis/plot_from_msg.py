@@ -13,8 +13,8 @@ plt.ion()  # make plotting interactive
 
 # set up overhead plot
 fig, ax = plt.subplots(figsize=[8, 4])
-plot = ax.scatter([], [], c='C5', label='Code solutions', s=1.5)
-plot2 = ax.scatter([], [], c='C1', label='TDCP Estimates', s=1.5)
+plot = ax.scatter([], [], c='C5', label='Receiver code solutions', s=1.5)
+plot2 = ax.scatter([], [], c='C1', label='Vehicle position estimates', s=1.5)
 ax.set_xlim(-5, 5)
 ax.set_ylim(-5, 5)
 ax.set_title('Live Overhead View')
