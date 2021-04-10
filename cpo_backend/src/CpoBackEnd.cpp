@@ -43,7 +43,7 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
     return;
 
   if (n >= 4) {
-    resetProblem();
+    initializeProblem();
 
     // set up steam problem
 
@@ -177,9 +177,29 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
     steam::DoglegGaussNewtonSolver::Params params;
     params.verbose = steam_verbose_;
     params.maxIterations = steam_max_iterations_;
-    params.absoluteCostChangeThreshold = 2e-2;        // workaround for gradient descent fails
+    params.absoluteCostChangeThreshold = 1e-2;
     solver_.reset(new steam::DoglegGaussNewtonSolver(problem_.get(), params));
-    solver_->optimize();
+
+    try {
+      solver_->optimize();
+    } catch (steam::unsuccessful_step &e) {
+      // did any successful steps occur?
+      if (solver_->getCurrIteration() <= 1) {
+        // no: something is very wrong; we should start over. Should not occur frequently
+        std::cout << "Steam has failed to optimise the problem! This is an ERROR." << std::endl;
+        resetEstimator();
+        return;
+      } else {
+        // yes: just a marginal problem, let's use what we got
+        std::cout << "Steam has failed due to an unsuccessful step. This should be OK if it happens infrequently."
+                  << std::endl;
+      }
+    } catch (steam::decomp_failure &e) {
+      // Should not occur frequently
+      std::cout << "Steam has encountered an LL^T decomposition error while optimizing! This is an ERROR." << std::endl;
+      resetEstimator();
+      return;
+    }
 
     // print final costs (for debugging/development)
     printCosts(true);
@@ -228,6 +248,7 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
     outstream << std::endl;
     outstream.close();
 
+    init_pose_estimated_ = true;
     first_window_ = false;
   }
 
@@ -289,9 +310,9 @@ void CpoBackEnd::getParams() {
   steam_max_iterations_ = this->get_parameter("solver_max_iterations").as_int();
 }
 
-void CpoBackEnd::resetProblem() {
+void CpoBackEnd::initializeProblem() {
   // setup loss functions
-  tdcp_loss_function_.reset(new steam::DcsLossFunc(2.0));   // todo: try different loss functions
+  tdcp_loss_function_.reset(new steam::DcsLossFunc(2.0));
   nonholonomic_loss_function_.reset(new steam::L2LossFunc());
   pp_loss_function_.reset(new steam::L2LossFunc());
 
@@ -303,9 +324,9 @@ void CpoBackEnd::resetProblem() {
   // set up the steam problem
   problem_.reset(new steam::OptimizationProblem());
 
-  if (first_window_) {
+  if (!init_pose_estimated_) {
     // estimate initial T_0g from code solutions
-    Eigen::Vector3d r_k0_ing  = toEigenVec3d(msgs_.back().first.enu_pos) -  toEigenVec3d(msgs_.front().first.enu_pos);
+    Eigen::Vector3d r_k0_ing = toEigenVec3d(msgs_.back().first.enu_pos) - toEigenVec3d(msgs_.front().first.enu_pos);
     double theta = atan2(r_k0_ing.y(), r_k0_ing.x());
 
     Eigen::Matrix<double, 6, 1> init_pose_vec;
@@ -313,13 +334,24 @@ void CpoBackEnd::resetProblem() {
 
     init_pose_ = lgmath::se3::Transformation(init_pose_vec);
 
-    // save ENU origin to results file
-    std::ofstream outstream;
-    outstream.open(results_path_);
-    Eigen::Vector3d enu_origin = toEigenVec3d(msgs_.back().first.enu_origin);
-    outstream << std::setprecision(9) << enu_origin[0] << "," << enu_origin[1] << "," << enu_origin[2] << std::endl;
-    outstream.close();
+    if (first_window_) {
+      // save ENU origin to results file
+      std::ofstream outstream;
+      outstream.open(results_path_);
+      Eigen::Vector3d enu_origin = toEigenVec3d(msgs_.back().first.enu_origin);
+      outstream << std::setprecision(9) << enu_origin[0] << "," << enu_origin[1] << "," << enu_origin[2] << std::endl;
+      outstream.close();
+    } else {
+      std::cout << "Warning: new initial pose was set midway through run."
+                << "Estimates on either side of this time should not be compared." << std::endl;
+    }
   }
+}
+
+void CpoBackEnd::resetEstimator() {
+  std::cout << "Clearing window and resetting the estimator." << std::endl;
+  msgs_.clear();
+  init_pose_estimated_ = false;
 }
 
 void CpoBackEnd::printCosts(bool final) {

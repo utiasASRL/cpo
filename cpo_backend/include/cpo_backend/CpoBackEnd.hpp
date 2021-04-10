@@ -32,7 +32,11 @@ class CpoBackEnd : public rclcpp::Node {
   /** \brief Callback for TDCP msgs */
   void _tdcpCallback(cpo_interfaces::msg::TDCP::SharedPtr msg_in);
 
-  void resetProblem();
+  /** \brief Resets loss functions, cost terms, etc. at top of TDCP callback */
+  void initializeProblem();
+
+  /** \brief Clears window and starts over after major error occurs */
+  void resetEstimator();
 
   /** \brief Store TDCP msg in our queue. Also checks times for dropped msgs */
   void addMsgToWindow(const cpo_interfaces::msg::TDCP::SharedPtr& msg);
@@ -102,8 +106,11 @@ class CpoBackEnd : public rclcpp::Node {
   /** \brief Maximum number of solver iterations per optimization */
   uint steam_max_iterations_;
 
-  /** \brief Our estimate of T_ag, stored to initialize the next optimization problem */
+  /** \brief Our estimate of T_0g, stored to initialize the next optimization problem */
   lgmath::se3::Transformation init_pose_;
+
+  /** \brief Keep track of whether we have T_0g estimate or need to get one from code solution */
+  bool init_pose_estimated_ = false;
 
   /** \brief Store a window of TDCP messages. We use deque over queue to get access */
   std::deque<std::pair<cpo_interfaces::msg::TDCP, lgmath::se3::Transformation>> msgs_;
