@@ -11,6 +11,7 @@ CpoFrontEnd::CpoFrontEnd()
   this->declare_parameter("baud", 57600);
   this->declare_parameter("from_serial", true);
   this->declare_parameter("log_serial", true);
+  this->declare_parameter("log_serial_filename", "log.bin");
   this->declare_parameter("data_path", "/home/ben/CLionProjects/gpso/data/rtcm3/feb15c.BIN");
   this->declare_parameter("approximate_time", -1);
 
@@ -18,9 +19,9 @@ CpoFrontEnd::CpoFrontEnd()
   baud_ = this->get_parameter("baud").as_int();
   from_serial = this->get_parameter("from_serial").as_bool();
   log_serial = this->get_parameter("log_serial").as_bool();
+  std::string log_serial_filename = this->get_parameter("log_serial_filename").as_string();
+  log_serial_path = "/home/ben/CLionProjects/ros2-ws/src/cpo/data/" + log_serial_filename;
   rtcm_path = this->get_parameter("data_path").as_string();
-
-  log_serial_path = "/home/ben/CLionProjects/ros2-ws/src/cpo/data/log.bin";   // todo: different file names
 
   if (!from_serial && !fs::exists(rtcm_path)) {
     throw std::runtime_error("RTCM data file not found.");

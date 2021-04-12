@@ -17,6 +17,6 @@ windows:
     layout: main-horizontal
     panes:
       - ros2 run cpo_backend cpo_backend --ros-args --params-file ./src/cpo_backend/config/default.yaml
-      - ros2 run cpo cpo --ros-args --params-file ./src/cpo/config/default.yaml
+      - ros2 run cpo cpo --ros-args --params-file ./src/cpo/config/default.yaml -p log_serial_filename:=serial_$(date '+%F')_$(date '+%H')_$(date '+%M')_$(date '+%S').bin
       - ros2 run cpo_analysis listener
       - ros2 topic list
