@@ -130,6 +130,9 @@ class CpoBackEnd : public rclcpp::Node {
   /** \brief Size of the optimization window in msgs */
   uint window_size_;
 
+  /** \brief Time period (in seconds) since last msg we will trust our odometry estimates */
+  double traj_timeout_limit_;
+
   bool first_window_ = true;
 
 };

@@ -21,15 +21,20 @@ CpoBackEnd::CpoBackEnd() : Node("cpo_back_end") {
   vehicle_publisher_ = this->create_publisher<geometry_msgs::msg::PoseWithCovariance>("cpo_odometry", 10);
   enu_publisher_ = this->create_publisher<geometry_msgs::msg::PoseWithCovariance>("cpo_enu", 10);
 
-  double freq = 10.0;     // todo: get as param
+  this->declare_parameter("publish_frequency", 5.0);
+  double freq = this->get_parameter("publish_frequency").as_double();
   double period = 1000 / freq;
   publish_timer_ =
       this->create_wall_timer(std::chrono::milliseconds((long) period), std::bind(&CpoBackEnd::_timedCallback, this));
 
   // set up receiver-vehicle transform. todo: hard-coded for now but eventually make this configurable
+  this->declare_parameter("r_veh_gps_inv", std::vector<double>{-0.60, 0.00, -0.52});
+  auto r = this->get_parameter("r_veh_gps_inv").as_double_array();
+
   Eigen::Matrix4d T_gps_vehicle_eigen = Eigen::Matrix4d::Identity();
-  T_gps_vehicle_eigen(0, 3) = -0.60;
-  T_gps_vehicle_eigen(2, 3) = -0.52;
+  T_gps_vehicle_eigen(0, 3) = r[0];
+  T_gps_vehicle_eigen(1, 3) = r[1];
+  T_gps_vehicle_eigen(2, 3) = r[2];
   auto T_gps_vehicle = lgmath::se3::TransformationWithCovariance(T_gps_vehicle_eigen);
   T_gps_vehicle.setZeroCovariance();
   tf_gps_vehicle_ = steam::se3::FixedTransformEvaluator::MakeShared(T_gps_vehicle);
@@ -131,6 +136,7 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
       }
     }
 
+    // todo: try locking T_0g instead when we already have a good estimate of it
     // add prior on initial pose to deal with roll uncertainty and constrain r^0g_g to zero
     steam::BaseNoiseModel<6>::Ptr
         sharedNoiseModel(new steam::StaticNoiseModel<6>(pose_prior_cov_));
@@ -230,8 +236,18 @@ void CpoBackEnd::_timedCallback() {
   }
 
   // grab times and extrapolate poses
-  double t_n = (double) msgs_.back().first.t_b * 1e-9;    // todo: don't have sim time set up yet so for now using this
-  double t_n1 = (double) msgs_.back().first.t_a * 1e-9;
+  double t_last_msg = (double) msgs_.back().first.t_b * 1e-9;
+  double t_n = (double) msgs_.back().first.t_b * 1e-9;  //get_clock()->now().seconds();  // todo: don't have sim time set up yet so for now using this
+  double t_n1 = t_n - 1.0;
+
+  std::cout << "get_clock: " << std::setprecision(12) << get_clock()->now().seconds() << "  t_last_msg: " << t_last_msg << std::setprecision(6) << std::endl;   // debug
+
+  if (t_n - t_last_msg > traj_timeout_limit_){
+    std::cout << "Latest carrier phase measurement is " << t_n - t_last_msg << " seconds old. "
+    << "Will not publish because trajectory is no longer valid." << std::endl;
+    return;
+  }
+
   lgmath::se3::Transformation T_0g = init_pose_;
   lgmath::se3::Transformation T_n0 = trajectory_->getInterpPoseEval(t_n)->evaluate();
   lgmath::se3::Transformation T_n10 = trajectory_->getInterpPoseEval(t_n1)->evaluate();
@@ -303,6 +319,7 @@ void CpoBackEnd::getParams() {
   this->declare_parameter("results_path");
   this->declare_parameter("solver_verbose", false);
   this->declare_parameter("solver_max_iterations", 5);
+  this->declare_parameter("traj_timeout_limit", 5.0);
 
   tdcp_cov_ << this->get_parameter("tdcp_cov").as_double();
 
@@ -336,6 +353,7 @@ void CpoBackEnd::getParams() {
   results_path_ = this->get_parameter("results_path").as_string();
   steam_verbose_ = this->get_parameter("solver_verbose").as_bool();
   steam_max_iterations_ = this->get_parameter("solver_max_iterations").as_int();
+  traj_timeout_limit_ = this->get_parameter("traj_timeout_limit").as_double();
 }
 
 void CpoBackEnd::initializeProblem() {
