@@ -3,6 +3,7 @@
 
 #include <cpo_backend/CpoBackEnd.hpp>
 #include <fstream>
+#include <chrono>
 
 using TransformStateVar = steam::se3::TransformStateVar;
 using TransformStateEvaluator = steam::se3::TransformStateEvaluator;
@@ -19,6 +20,11 @@ CpoBackEnd::CpoBackEnd() : Node("cpo_back_end") {
 
   vehicle_publisher_ = this->create_publisher<geometry_msgs::msg::PoseWithCovariance>("cpo_odometry", 10);
   enu_publisher_ = this->create_publisher<geometry_msgs::msg::PoseWithCovariance>("cpo_enu", 10);
+
+  double freq = 10.0;     // todo: get as param
+  double period = 1000 / freq;
+  publish_timer_ =
+      this->create_wall_timer(std::chrono::milliseconds((long) period), std::bind(&CpoBackEnd::_timedCallback, this));
 
   // set up receiver-vehicle transform. todo: hard-coded for now but eventually make this configurable
   Eigen::Matrix4d T_gps_vehicle_eigen = Eigen::Matrix4d::Identity();
@@ -212,47 +218,69 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
     // update our orientation estimate
     init_pose_ = T_0g_statevar->getValue();
 
-    // publish
-    Eigen::Matrix<double, 6, 6> dummy_covariance = Eigen::Matrix<double, 6, 6>::Identity();   // todo: get correct cov
-    const auto &T_n_n1 = msgs_.back().second;
-    geometry_msgs::msg::PoseWithCovariance relative_pose_msg = toPoseMsg(T_n_n1, dummy_covariance);
-    vehicle_publisher_->publish(relative_pose_msg);
-    lgmath::se3::Transformation T_ng = statevars.back()->getValue() * init_pose_;
-    geometry_msgs::msg::PoseWithCovariance enu_pose_msg = toPoseMsg(T_ng, dummy_covariance);
-    enu_publisher_->publish(enu_pose_msg);
-
-    // append latest estimate to file
-    std::ofstream outstream;
-    outstream.open(results_path_, std::ofstream::out | std::ofstream::app);
-    double t_n = (double) msgs_.back().first.t_b * 1e-9;
-    double t_n1 = (double) msgs_.back().first.t_a * 1e-9;
-    const auto r_ng_g = T_ng.r_ba_ina();
-
-    // also get receiver position estimate for comparing to ground truth
-    auto r_sg_g = (tf_gps_vehicle_->evaluate() * T_ng).r_ba_ina();
-
-    // save times and global position for easy plotting
-    outstream << std::setprecision(12) << t_n << ", " << t_n1 << ", ";
-    outstream << r_sg_g[0] << ", " << r_sg_g[1] << ", " << r_sg_g[2] << ", ";
-    outstream << r_ng_g[0] << ", " << r_ng_g[1] << ", " << r_ng_g[2] << ", ";
-
-    // save full transformations as well. Transpose needed to print in row-major order
-    auto temp = T_ng.matrix().transpose();
-    auto T_ng_flat = std::vector<double>(temp.data(), temp.data() + 16);
-    for (auto entry : T_ng_flat) outstream << entry << ",";
-
-    temp = T_n_n1.matrix().transpose();
-    auto T_n_n1_flat = std::vector<double>(temp.data(), temp.data() + 16);
-    for (auto entry : T_n_n1_flat) outstream << entry << ",";
-
-    outstream << std::endl;
-    outstream.close();
-
     init_pose_estimated_ = true;
     first_window_ = false;
   }
-
 }
+
+void CpoBackEnd::_timedCallback() {
+  if (first_window_ || !init_pose_estimated_ || trajectory_ == nullptr) {
+    std::cout << "Not publishing because don't currently have a valid pose estimate." << std::endl;
+    return;
+  }
+
+  // grab times and extrapolate poses
+  double t_n = (double) msgs_.back().first.t_b * 1e-9;    // todo: don't have sim time set up yet so for now using this
+  double t_n1 = (double) msgs_.back().first.t_a * 1e-9;
+  lgmath::se3::Transformation T_0g = init_pose_;
+  lgmath::se3::Transformation T_n0 = trajectory_->getInterpPoseEval(t_n)->evaluate();
+  lgmath::se3::Transformation T_n10 = trajectory_->getInterpPoseEval(t_n1)->evaluate();
+
+  lgmath::se3::Transformation T_ng = T_n0 * T_0g;
+  lgmath::se3::Transformation T_n_n1 = T_n0 * T_n10.inverse();
+
+  Eigen::Matrix<double, 6, 6> dummy_covariance = Eigen::Matrix<double, 6, 6>::Identity();   // todo: get correct cov
+
+  // publish
+  geometry_msgs::msg::PoseWithCovariance relative_pose_msg = toPoseMsg(T_n_n1, dummy_covariance);
+  vehicle_publisher_->publish(relative_pose_msg);
+  geometry_msgs::msg::PoseWithCovariance enu_pose_msg = toPoseMsg(T_ng, dummy_covariance);
+  enu_publisher_->publish(enu_pose_msg);
+  std::cout << "Message published! " << std::endl;
+  saveToFile(t_n, t_n1, T_ng, T_n_n1);
+}
+
+void CpoBackEnd::saveToFile(double t_n,
+                            double t_n1,
+                            const lgmath::se3::Transformation &T_ng,
+                            const lgmath::se3::Transformation &T_n_n1) const {
+  // append latest estimate to file
+  std::ofstream outstream;
+  outstream.open(results_path_, std::ofstream::out | std::ofstream::app);
+
+  const auto r_ng_g = T_ng.r_ba_ina();
+
+  // also get receiver position estimate for comparing to ground truth
+  auto r_sg_g = (tf_gps_vehicle_->evaluate() * T_ng).r_ba_ina();
+
+  // save times and global position for easy plotting
+  outstream << std::setprecision(12) << t_n << ", " << t_n1 << ", ";
+  outstream << r_sg_g[0] << ", " << r_sg_g[1] << ", " << r_sg_g[2] << ", ";
+  outstream << r_ng_g[0] << ", " << r_ng_g[1] << ", " << r_ng_g[2] << ", ";
+
+  // save full transformations as well. Transpose needed to print in row-major order
+  auto temp = T_ng.matrix().transpose();
+  auto T_ng_flat = std::vector<double>(temp.data(), temp.data() + 16);
+  for (auto entry : T_ng_flat) outstream << entry << ",";
+
+  temp = T_n_n1.matrix().transpose();
+  auto T_n_n1_flat = std::vector<double>(temp.data(), temp.data() + 16);
+  for (auto entry : T_n_n1_flat) outstream << entry << ",";
+
+  outstream << std::endl;
+  outstream.close();
+}
+
 void CpoBackEnd::getParams() {
   this->declare_parameter("tdcp_cov", 0.1);
   this->declare_parameter("non_holo_y", 0.1);
@@ -351,6 +379,7 @@ void CpoBackEnd::initializeProblem() {
 void CpoBackEnd::resetEstimator() {
   std::cout << "Clearing window and resetting the estimator." << std::endl;
   msgs_.clear();
+  trajectory_ = nullptr;
   init_pose_estimated_ = false;
 }
 

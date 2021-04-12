@@ -32,6 +32,9 @@ class CpoBackEnd : public rclcpp::Node {
   /** \brief Callback for TDCP msgs */
   void _tdcpCallback(cpo_interfaces::msg::TDCP::SharedPtr msg_in);
 
+  /** \brief Timed callback to query trajectory if available and publish pose estimate */
+  void _timedCallback();
+
   /** \brief Resets loss functions, cost terms, etc. at top of TDCP callback */
   void initializeProblem();
 
@@ -40,6 +43,12 @@ class CpoBackEnd : public rclcpp::Node {
 
   /** \brief Store TDCP msg in our queue. Also checks times for dropped msgs */
   void addMsgToWindow(const cpo_interfaces::msg::TDCP::SharedPtr& msg);
+
+  /** \brief Saves latest pose information to a CSV file for later analysis */
+  void saveToFile(double t_n,
+                  double t_n1,
+                  const lgmath::se3::Transformation &T_ng,
+                  const lgmath::se3::Transformation &T_n_n1) const;
 
   /** \brief Helper to convert lgmath Transform to ROS2 msg */
   static geometry_msgs::msg::PoseWithCovariance toPoseMsg(const lgmath::se3::Transformation& T,
@@ -56,6 +65,9 @@ class CpoBackEnd : public rclcpp::Node {
 
   /** \brief Publisher of odometry transforms (relative vehicle frame poses) */
   rclcpp::Publisher<geometry_msgs::msg::PoseWithCovariance>::SharedPtr vehicle_publisher_;
+
+  /** Timer to publish odometry estimates at a fixed rate */
+  rclcpp::TimerBase::SharedPtr publish_timer_;
 
   /** \brief The fixed sensor-vehicle transform. Allows us to do estimation in the vehicle frame */
   steam::se3::FixedTransformEvaluator::ConstPtr tf_gps_vehicle_;
