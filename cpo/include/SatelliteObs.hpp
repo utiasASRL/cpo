@@ -2,13 +2,15 @@
 
 #include <rtklib.h>
 
+#define LEAP_SECONDS 18
+
 /** \brief Stores data related to one satellite observation at one timestamp
  * Reuses RTKLIB's obsd_t struct with some additional calculated values
  * */
 class SatelliteObs {
 
  public:
-  explicit SatelliteObs(obsd_t obs);
+  explicit SatelliteObs(obsd_t obs, double stamp_in);
 
   /** \brief Returns phase measurement (adjusted for atmosphere if applicable) in metres */
   double getAdjPhaseRange() const;
@@ -16,12 +18,25 @@ class SatelliteObs {
   /** \brief Returns negation of loss-of-lock indicator */
   bool isPhaseLocked() const;
 
-  /** \brief Return timestamp of observation */
-  gtime_t getTimestamp() const {
+  /** \brief Return timestamp of observation as measured by the GNSS receiver */
+  gtime_t getMeasTimestamp() const {
     return observation_.time;
   }
 
+  double convertGpsToUnix(gtime_t time_in) {
+    double gps_time = time_in.time + time_in.sec;
+    return gps_time - LEAP_SECONDS;
+  }
+
+  /** \brief Return timestamp of when we received the observation */
+  double getInTimestamp() const {
+    return in_stamp_;
+  }
+
  private:
+
+  /** \brief Unix timestamp of when we received the phase measurement. Allows us to use consistent ROS time. */
+  double in_stamp_;
 
   /** \brief Struct containing phase, pseudorange measurements among other things */
   obsd_t observation_;

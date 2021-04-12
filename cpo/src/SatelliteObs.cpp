@@ -1,8 +1,8 @@
 #include <SatelliteObs.hpp>
 
-SatelliteObs::SatelliteObs(obsd_t obs) : observation_(obs) {
+SatelliteObs::SatelliteObs(obsd_t obs, double stamp_in) : observation_(obs), in_stamp_(stamp_in) {
 
-  tropospheric_delay_ = 0;
+  tropospheric_delay_ = 0;      // todo
   ionospheric_advance_ = 0;
 }
 

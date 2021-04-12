@@ -10,3 +10,4 @@ cpo_front_end:
 
     # Unix time data is from. Set to negative to use live time
     approximate_time: 1613400000       # Feb.15/21
+#    approximate_time: -1       # now

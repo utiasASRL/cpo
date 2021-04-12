@@ -52,6 +52,7 @@ CpoFrontEnd::CpoFrontEnd()
   if (temp_time < 0) {
     // setting to negative value indicates we want to use the live time
     approximate_time = std::time(nullptr);
+    std::cout << "Set approximate time to " << std::setprecision(12) << approximate_time << std::endl;
   } else {
     approximate_time = temp_time;
   }

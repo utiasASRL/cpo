@@ -27,7 +27,7 @@ CpoBackEnd::CpoBackEnd() : Node("cpo_back_end") {
   publish_timer_ =
       this->create_wall_timer(std::chrono::milliseconds((long) period), std::bind(&CpoBackEnd::_timedCallback, this));
 
-  // set up receiver-vehicle transform. todo: hard-coded for now but eventually make this configurable
+  // set up receiver-vehicle transform
   this->declare_parameter("r_veh_gps_inv", std::vector<double>{-0.60, 0.00, -0.52});
   auto r = this->get_parameter("r_veh_gps_inv").as_double_array();
 
@@ -237,7 +237,8 @@ void CpoBackEnd::_timedCallback() {
 
   // grab times and extrapolate poses
   double t_last_msg = (double) msgs_.back().first.t_b * 1e-9;
-  double t_n = (double) msgs_.back().first.t_b * 1e-9;  //get_clock()->now().seconds();  // todo: don't have sim time set up yet so for now using this
+//  double t_n = (double) msgs_.back().first.t_b * 1e-9;  //get_clock()->now().seconds();  // todo: don't have sim time set up yet so for now using this
+  double t_n = get_clock()->now().seconds();
   double t_n1 = t_n - 1.0;
 
   std::cout << "get_clock: " << std::setprecision(12) << get_clock()->now().seconds() << "  t_last_msg: " << t_last_msg << std::setprecision(6) << std::endl;   // debug

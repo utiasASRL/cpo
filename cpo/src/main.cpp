@@ -59,7 +59,8 @@ int main(int argc, char **argv) {
         // check the observation is from a positioning satellite (as opposed to SBAS)
         if (obs.sat < MINPRNGPS || obs.sat > MAXPRNGPS) continue;        // todo: assuming GPS right now
 
-        node.curr_sats->insert(std::make_pair(obs.sat, SatelliteObs(obs)));
+        double now_time = node.get_clock()->now().seconds();
+        node.curr_sats->insert(std::make_pair(obs.sat, SatelliteObs(obs, now_time)));
 
         if (obs.LLI[0]) {
           trace(2, "Lock loss for satellite %i.\n", obs.sat);
@@ -116,10 +117,10 @@ int main(int argc, char **argv) {
         const auto &sat_1a = node.prev_sats->at(sat_1_id);
         const auto &sat_1b = node.curr_sats->at(sat_1_id);
 
-        gtime_t prev_time = sat_1a.getTimestamp();
-        gtime_t curr_time = sat_1b.getTimestamp();
-        meas_msg.t_a = 1e9 * (prev_time.time + prev_time.sec);  // todo: may lose precision here but shouldn't matter
-        meas_msg.t_b = 1e9 * (curr_time.time + prev_time.sec);
+        gtime_t prev_time = sat_1a.getMeasTimestamp();
+        gtime_t curr_time = sat_1b.getMeasTimestamp();
+        meas_msg.t_a = 1e9 * sat_1a.getInTimestamp();       // todo: not sure if we want to timestamp this ourselves. May want both stamps in msg
+        meas_msg.t_b = 1e9 * sat_1b.getInTimestamp();
 
         Eigen::Vector3d current_code = node.getCurrentCodePos();
         meas_msg.enu_pos.set__x(current_code.x());
