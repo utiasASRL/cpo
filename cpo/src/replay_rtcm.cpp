@@ -12,7 +12,7 @@ int main() {
 
   // specify location of binary RTCM file
   std::string data_directory = "/home/ben/CLionProjects/gpso/data/rtcm3/";
-  std::string data_file = "feb10a.BIN";
+  std::string data_file = "feb15c.BIN";
   fs::path data_path{data_directory + data_file};
   if (!fs::exists(data_path)) {
     throw std::invalid_argument("File path not found");

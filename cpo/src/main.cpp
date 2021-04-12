@@ -1,4 +1,5 @@
 #include <iostream>
+#include <fstream>
 
 #include <CpoFrontEnd.hpp>
 
@@ -21,16 +22,24 @@ int main(int argc, char **argv) {
   int rtcm_status;
 
   _IO_FILE *fp;
+  std::ofstream fs;
+
   if (!node.from_serial) {
     fp = fopen(node.rtcm_path.c_str(), "r");
+  } else if (node.log_serial) {
+    fs = std::ofstream (node.log_serial_path, std::ios::out | std::ios::binary);
   }
 
   while (rclcpp::ok()) {
 
     if (node.from_serial) {
       // attempt to read byte from serial, if no data, continue
-      size_t bytes_read = node.serial_port->read(&byte_in, 1);    // todo: add option to log raw RTCM to file?
+      size_t bytes_read = node.serial_port->read(&byte_in, 1);
       if (!bytes_read) continue;
+
+      if (node.log_serial) {
+        fs.write(reinterpret_cast<const char *>(&byte_in), 1);
+      }
     } else {
       // attempt to read byte from file, if at end-of-file, break
       int data_int = fgetc(fp);

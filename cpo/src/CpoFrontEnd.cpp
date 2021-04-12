@@ -10,19 +10,23 @@ CpoFrontEnd::CpoFrontEnd()
   this->declare_parameter("port_path", "/dev/ttyUSB0");
   this->declare_parameter("baud", 57600);
   this->declare_parameter("from_serial", true);
+  this->declare_parameter("log_serial", true);
   this->declare_parameter("data_path", "/home/ben/CLionProjects/gpso/data/rtcm3/feb15c.BIN");
   this->declare_parameter("approximate_time", -1);
 
   port_path_ = this->get_parameter("port_path").as_string();
   baud_ = this->get_parameter("baud").as_int();
   from_serial = this->get_parameter("from_serial").as_bool();
+  log_serial = this->get_parameter("log_serial").as_bool();
   rtcm_path = this->get_parameter("data_path").as_string();
+
+  log_serial_path = "/home/ben/CLionProjects/ros2-ws/src/cpo/data/log.bin";   // todo: different file names
 
   if (!from_serial && !fs::exists(rtcm_path)) {
     throw std::runtime_error("RTCM data file not found.");
   }
 
-  if (from_serial && !fs::exists(port_path_)) {      // todo: should this warn and keep trying to connect instead?
+  if (from_serial && !fs::exists(port_path_)) {
     throw std::runtime_error("Serial connection not found. Check that USB is plugged in.");
   }
 

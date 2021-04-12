@@ -20,7 +20,7 @@ ax.set_ylim(-5, 5)
 ax.set_title('Live Overhead View')
 ax.set_xlabel('Easting (m)')
 ax.set_ylabel('Northing (m)')
-ax.legend(loc="upper right")
+ax.legend(loc="lower left")
 ax.set_aspect('equal')
 
 

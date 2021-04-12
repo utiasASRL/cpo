@@ -92,6 +92,12 @@ class CpoFrontEnd : public rclcpp::Node {
   /** \brief True if running live over serial, false if we are reading a logged dataset */
   bool from_serial;
 
+  /** \brief Log serial port input to file if true */
+  bool log_serial;
+
+  /** \brief File path for logging serial data */
+  std::string log_serial_path;
+
   /** Location to find binary RTCM file when reading logged data */
   std::string rtcm_path;
 
