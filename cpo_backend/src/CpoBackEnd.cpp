@@ -237,11 +237,8 @@ void CpoBackEnd::_timedCallback() {
 
   // grab times and extrapolate poses
   double t_last_msg = (double) msgs_.back().first.t_b * 1e-9;
-//  double t_n = (double) msgs_.back().first.t_b * 1e-9;  //get_clock()->now().seconds();  // todo: don't have sim time set up yet so for now using this
   double t_n = get_clock()->now().seconds();
   double t_n1 = t_n - 1.0;
-
-  std::cout << "get_clock: " << std::setprecision(12) << get_clock()->now().seconds() << "  t_last_msg: " << t_last_msg << std::setprecision(6) << std::endl;   // debug
 
   if (t_n - t_last_msg > traj_timeout_limit_){
     std::cout << "Latest carrier phase measurement is " << t_n - t_last_msg << " seconds old. "

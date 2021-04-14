@@ -120,8 +120,8 @@ int main(int argc, char **argv) {
 
         gtime_t prev_time = sat_1a.getMeasTimestamp();
         gtime_t curr_time = sat_1b.getMeasTimestamp();
-        meas_msg.t_a = 1e9 * sat_1a.getInTimestamp();       // todo: not sure if we want to timestamp this ourselves. May want both stamps in msg
-        meas_msg.t_b = 1e9 * sat_1b.getInTimestamp();
+        meas_msg.t_a = 1e9 * (prev_time.time + prev_time.sec);  // todo: may lose precision here but shouldn't matter
+        meas_msg.t_b = 1e9 * (curr_time.time + curr_time.sec);
 
         Eigen::Vector3d current_code = node->getCurrentCodePos();
         meas_msg.enu_pos.set__x(current_code.x());
@@ -174,6 +174,19 @@ int main(int argc, char **argv) {
           meas_msg.pairs.push_back(pair_msg);
         }
         // publish the pseudo-measurement to be used by the back-end
+        if (!node->from_serial) {
+          // todo: cutoff for older messages?
+
+
+          auto time_diff = node->get_clock()->now().seconds() - meas_msg.t_b * 1e-9;     // todo: this may not be useful
+          if (abs(time_diff) > 30) {
+            std::cout << "Warning: " << time_diff << " second differential between sim_time and current measurement." << std::endl;
+          }
+
+          while (node->get_clock()->now().seconds() < meas_msg.t_b * 1e-9){
+            rclcpp::spin_some(node);    // todo: may be better way
+          }
+        }
         node->publishTdcp(meas_msg);
       }
       // current {sats, code_pos} -> previous {sats, code_pos}

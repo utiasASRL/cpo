@@ -115,10 +115,6 @@ void CpoFrontEnd::updateCodePos(double *rr) {
 
 void CpoFrontEnd::publishTdcp(const cpo_interfaces::msg::TDCP &message) {
   publisher_->publish(message);
-
-  if (!from_serial) {
-    usleep(0.2e6);      // sleep to replay at ~5x when reading data from file
-  }
 }
 
 void CpoFrontEnd::stepForward() {

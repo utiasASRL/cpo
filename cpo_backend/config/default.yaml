@@ -6,6 +6,8 @@ cpo_back_end:
     traj_timeout_limit: 5.0
     r_veh_gps_inv: [-0.60, 0.00, -0.52]
 
+    use_sim_time: true
+
     tdcp_cov: 0.01
     non_holo_y: 0.1
     non_holo_z: 0.1
