@@ -47,10 +47,13 @@ target_link_libraries(cpo serial rtklib)
 add_executable(replay_RTCM src/replay_rtcm.cpp)
 target_link_libraries(replay_RTCM serial)
 
+add_executable(clock_server src/clock_server.cpp)
+ament_target_dependencies(clock_server rclcpp)
 
 install(TARGETS
         cpo
         replay_RTCM
+        clock_server
         DESTINATION lib/${PROJECT_NAME})
 
 # Parameter files
