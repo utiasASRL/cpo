@@ -21,11 +21,18 @@ CpoBackEnd::CpoBackEnd() : Node("cpo_back_end") {
   vehicle_publisher_ = this->create_publisher<geometry_msgs::msg::PoseWithCovariance>("cpo_odometry", 10);
   enu_publisher_ = this->create_publisher<geometry_msgs::msg::PoseWithCovariance>("cpo_enu", 10);
 
-  this->declare_parameter("publish_frequency", 5.0);
-  double freq = this->get_parameter("publish_frequency").as_double();
-  double period = 1000 / freq;
-  publish_timer_ =
-      this->create_wall_timer(std::chrono::milliseconds((long) period), std::bind(&CpoBackEnd::_timedCallback, this));
+  this->declare_parameter("fixed_rate_publish", true);
+  fixed_rate_publish_ = this->get_parameter("fixed_rate_publish").as_bool();
+
+  if (fixed_rate_publish_) {
+    this->declare_parameter("publish_frequency", 5.0);
+    double freq = this->get_parameter("publish_frequency").as_double();
+    double period = 1000 / freq;
+    publish_timer_ =
+        this->create_wall_timer(std::chrono::milliseconds((long) period), std::bind(&CpoBackEnd::_timedCallback, this));
+  } else {
+    publish_timer_ = nullptr;
+  }
 
   // set up receiver-vehicle transform
   this->declare_parameter("r_veh_gps_inv", std::vector<double>{-0.60, 0.00, -0.52});
@@ -223,6 +230,15 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
 
     // update our orientation estimate
     init_pose_ = T_0g_statevar->getValue();
+
+    if (!fixed_rate_publish_) {
+      double t_n = (double) msgs_.back().first.t_b * 1e-9;
+      double t_n1 = (double) msgs_.back().first.t_a * 1e-9;
+      lgmath::se3::Transformation T_ng = statevars.back()->getValue() * init_pose_;
+      const auto &T_n_n1 = msgs_.back().second;
+      publishPoses(T_ng, T_n_n1);
+      saveToFile(t_n, t_n1, T_ng, T_n_n1);
+    }
 
     init_pose_estimated_ = true;
     first_window_ = false;

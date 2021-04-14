@@ -174,9 +174,8 @@ int main(int argc, char **argv) {
           meas_msg.pairs.push_back(pair_msg);
         }
         // publish the pseudo-measurement to be used by the back-end
-        if (!node->from_serial) {
+        if (node->get_parameter("use_sim_time").as_bool()) {
           // todo: cutoff for older messages?
-
 
           auto time_diff = node->get_clock()->now().seconds() - meas_msg.t_b * 1e-9;     // todo: this may not be useful
           if (abs(time_diff) > 30) {

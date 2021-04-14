@@ -2,6 +2,7 @@ cpo_back_end:
   ros__parameters:
     results_path: "/home/ben/CLionProjects/ros2-ws/src/cpo_analysis/data/estimates/cpo.csv" # todo: better name
     window_size: 10
+    fixed_rate_publish: false
     publish_frequency: 10.0
     traj_timeout_limit: 5.0
     r_veh_gps_inv: [-0.60, 0.00, -0.52]

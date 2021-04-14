@@ -69,6 +69,9 @@ class CpoBackEnd : public rclcpp::Node {
   /** \brief Publisher of odometry transforms (relative vehicle frame poses) */
   rclcpp::Publisher<geometry_msgs::msg::PoseWithCovariance>::SharedPtr vehicle_publisher_;
 
+  /** \brief Whether to publish transform estimates at fixed rate (true) or after each msg received (false) */
+  bool fixed_rate_publish_;
+
   /** Timer to publish odometry estimates at a fixed rate */
   rclcpp::TimerBase::SharedPtr publish_timer_;
 
