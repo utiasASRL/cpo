@@ -16,7 +16,7 @@ int main(int argc, char **argv) {
     tracelevel(trace_level);
   }
 
-  CpoFrontEnd node;
+  auto node = std::make_shared<CpoFrontEnd>();
 
   unsigned char byte_in;
   int rtcm_status;
@@ -24,20 +24,21 @@ int main(int argc, char **argv) {
   _IO_FILE *fp;
   std::ofstream fs;
 
-  if (!node.from_serial) {
-    fp = fopen(node.rtcm_path.c_str(), "r");
-  } else if (node.log_serial) {
-    fs = std::ofstream (node.log_serial_path, std::ios::out | std::ios::binary);
+  if (!node->from_serial) {
+    fp = fopen(node->rtcm_path.c_str(), "r");
+  } else if (node->log_serial) {
+    fs = std::ofstream (node->log_serial_path, std::ios::out | std::ios::binary);
   }
 
   while (rclcpp::ok()) {
+    rclcpp::spin_some(node);
 
-    if (node.from_serial) {
+    if (node->from_serial) {
       // attempt to read byte from serial, if no data, continue
-      size_t bytes_read = node.serial_port->read(&byte_in, 1);
+      size_t bytes_read = node->serial_port->read(&byte_in, 1);
       if (!bytes_read) continue;
 
-      if (node.log_serial) {
+      if (node->log_serial) {
         fs.write(reinterpret_cast<const char *>(&byte_in), 1);
       }
     } else {
@@ -49,35 +50,35 @@ int main(int argc, char **argv) {
         byte_in = data_int;
     }
 
-    rtcm_status = input_rtcm3(&(node.rtcm), byte_in);
+    rtcm_status = input_rtcm3(&(node->rtcm), byte_in);
 
     // phase observation received
     if (rtcm_status == 1) {
-      for (unsigned i = 0; i < node.rtcm.obs.n; ++i) {
-        obsd_t &obs = node.rtcm.obs.data[i];
+      for (unsigned i = 0; i < node->rtcm.obs.n; ++i) {
+        obsd_t &obs = node->rtcm.obs.data[i];
 
         // check the observation is from a positioning satellite (as opposed to SBAS)
         if (obs.sat < MINPRNGPS || obs.sat > MAXPRNGPS) continue;        // todo: assuming GPS right now
 
-        double now_time = node.get_clock()->now().seconds();
-        node.curr_sats->insert(std::make_pair(obs.sat, SatelliteObs(obs, now_time)));
+        double now_time = node->get_clock()->now().seconds();
+        node->curr_sats->insert(std::make_pair(obs.sat, SatelliteObs(obs, now_time)));
 
         if (obs.LLI[0]) {
           trace(2, "Lock loss for satellite %i.\n", obs.sat);
         }
       }
 
-      std::cout << "Observed " << node.curr_sats->size() << " satellites:  ";
-      for (const auto &sat : *node.curr_sats) std::cout << (int) sat.first << ", ";
+      std::cout << "Observed " << node->curr_sats->size() << " satellites:  ";
+      for (const auto &sat : *node->curr_sats) std::cout << (int) sat.first << ", ";
       std::cout << std::endl;
 
       // get approximate start position through single-point (pseudo-range) positioning
       sol_t init_solution;
       char error_msg[128];
-      bool success = pntpos(node.rtcm.obs.data,
-                            node.rtcm.obs.n,
-                            &node.rtcm.nav,
-                            &node.code_positioning_options,
+      bool success = pntpos(node->rtcm.obs.data,
+                            node->rtcm.obs.n,
+                            &node->rtcm.nav,
+                            &node->code_positioning_options,
                             &init_solution,
                             nullptr,
                             nullptr,
@@ -85,21 +86,21 @@ int main(int argc, char **argv) {
 
       if (success) {
         // define the ENU origin if this is the first solution calculated
-        if (!node.enu_origin_set) {
-          node.setEnuOrigin(&init_solution.rr[0]);
+        if (!node->enu_origin_set) {
+          node->setEnuOrigin(&init_solution.rr[0]);
         }
-        node.updateCodePos(&init_solution.rr[0]);
+        node->updateCodePos(&init_solution.rr[0]);
       }
 
       // perform TDCP
-      if (node.prev_sats->size() >= 2 && node.enu_origin_set) {
+      if (node->prev_sats->size() >= 2 && node->enu_origin_set) {
         // iterate through map to find common satellites
         std::vector<int> matches;
-        for (auto &[id, curr_sat] : *node.curr_sats) {
+        for (auto &[id, curr_sat] : *node->curr_sats) {
           // check for valid ephemeris and continuous phase lock
-          if (node.eph_set_gps[id] && curr_sat.isPhaseLocked()) {
+          if (node->eph_set_gps[id] && curr_sat.isPhaseLocked()) {
             // check that we saw the same satellite last msg
-            if (node.prev_sats->count(id) == 1) {
+            if (node->prev_sats->count(id) == 1) {
               matches.push_back(id);
             }
           }
@@ -114,20 +115,20 @@ int main(int argc, char **argv) {
         // calculate necessary values for each pair to fill in SatPair msg
         // we'll use the 1st match as the 1st satellite for all pairs and the j^th match for the 2nd
         int sat_1_id = matches[0];
-        const auto &sat_1a = node.prev_sats->at(sat_1_id);
-        const auto &sat_1b = node.curr_sats->at(sat_1_id);
+        const auto &sat_1a = node->prev_sats->at(sat_1_id);
+        const auto &sat_1b = node->curr_sats->at(sat_1_id);
 
         gtime_t prev_time = sat_1a.getMeasTimestamp();
         gtime_t curr_time = sat_1b.getMeasTimestamp();
         meas_msg.t_a = 1e9 * sat_1a.getInTimestamp();       // todo: not sure if we want to timestamp this ourselves. May want both stamps in msg
         meas_msg.t_b = 1e9 * sat_1b.getInTimestamp();
 
-        Eigen::Vector3d current_code = node.getCurrentCodePos();
+        Eigen::Vector3d current_code = node->getCurrentCodePos();
         meas_msg.enu_pos.set__x(current_code.x());
         meas_msg.enu_pos.set__y(current_code.y());
         meas_msg.enu_pos.set__z(current_code.z());
 
-        Eigen::Vector3d enu_origin = node.getGeodeticEnuOrigin();
+        Eigen::Vector3d enu_origin = node->getGeodeticEnuOrigin();
         meas_msg.enu_origin.set__x(enu_origin.x());
         meas_msg.enu_origin.set__y(enu_origin.y());
         meas_msg.enu_origin.set__z(enu_origin.z());
@@ -135,13 +136,13 @@ int main(int argc, char **argv) {
         // calculate vectors to the 1st satellite
         Eigen::Vector3d r_1a_a;
         Eigen::Vector3d r_1a_b;
-        node.getSatelliteVector(sat_1_id, prev_time, prev_time, r_1a_a);    //todo: should check return value
-        node.getSatelliteVector(sat_1_id, curr_time, prev_time, r_1a_b);
+        node->getSatelliteVector(sat_1_id, prev_time, prev_time, r_1a_a);    //todo: should check return value
+        node->getSatelliteVector(sat_1_id, curr_time, prev_time, r_1a_b);
 
         for (unsigned int j = 1; j < matches.size(); ++j) {
           int sat_2_id = matches[j];
-          const auto &sat_2a = node.prev_sats->at(sat_2_id);
-          const auto &sat_2b = node.curr_sats->at(sat_2_id);
+          const auto &sat_2a = node->prev_sats->at(sat_2_id);
+          const auto &sat_2b = node->curr_sats->at(sat_2_id);
 
           double phi_dd = (sat_2b.getAdjPhaseRange() - sat_2a.getAdjPhaseRange())
               - (sat_1b.getAdjPhaseRange() - sat_1a.getAdjPhaseRange());
@@ -149,8 +150,8 @@ int main(int argc, char **argv) {
           // calculate vectors to 2nd satellite
           Eigen::Vector3d r_2a_a = Eigen::Vector3d::Zero();   // placeholder
           Eigen::Vector3d r_2a_b = Eigen::Vector3d::Zero();   // placeholder
-          node.getSatelliteVector(sat_2_id, prev_time, prev_time, r_2a_a);
-          node.getSatelliteVector(sat_2_id, curr_time, prev_time, r_2a_b);
+          node->getSatelliteVector(sat_2_id, prev_time, prev_time, r_2a_a);
+          node->getSatelliteVector(sat_2_id, curr_time, prev_time, r_2a_b);
 
           cpo_interfaces::msg::SatPair pair_msg;
           pair_msg.phi_measured = phi_dd;
@@ -173,19 +174,19 @@ int main(int argc, char **argv) {
           meas_msg.pairs.push_back(pair_msg);
         }
         // publish the pseudo-measurement to be used by the back-end
-        node.publishTdcp(meas_msg);
+        node->publishTdcp(meas_msg);
       }
       // current {sats, code_pos} -> previous {sats, code_pos}
-      node.stepForward();
+      node->stepForward();
     }
 
     // ephemeris message received. Keep track of which satellites have ephemeris
     if (rtcm_status == 2) {
-      const auto &current_eph_sat = node.rtcm.ephsat;
-      if (!node.eph_set_gps[current_eph_sat - MINPRNGPS]) {
-        node.eph_count_gps++;
+      const auto &current_eph_sat = node->rtcm.ephsat;
+      if (!node->eph_set_gps[current_eph_sat - MINPRNGPS]) {
+        node->eph_count_gps++;
       }
-      node.eph_set_gps[current_eph_sat] = true;
+      node->eph_set_gps[current_eph_sat] = true;
     }
   }
 
