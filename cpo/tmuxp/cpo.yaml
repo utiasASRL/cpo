@@ -19,5 +19,8 @@ windows:
       - ros2 run cpo_backend cpo_backend --ros-args --params-file ./src/cpo_backend/config/default.yaml
       - ros2 run cpo cpo --ros-args --params-file ./src/cpo/config/default.yaml -p log_serial_filename:=serial_$(date '+%F')_$(date '+%H')_$(date '+%M')_$(date '+%S').bin
       - ros2 run cpo_analysis listener
-      - ros2 run cpo clock_server
+#      - ros2 run cpo clock_server --ros-args -p first_meas_time:=1613417120 # feb15a
+      - ros2 run cpo clock_server --ros-args -p first_meas_time:=1613419600 # feb15c
+#      - ros2 run cpo clock_server --ros-args -p first_meas_time:=1613424600 # feb15e
+#      - ros2 run cpo clock_server --ros-args -p first_meas_time:=1613425863 # feb15f
       - ros2 topic list

@@ -180,9 +180,12 @@ int main(int argc, char **argv) {
           auto time_diff = node->get_clock()->now().seconds() - meas_msg.t_b * 1e-9;     // todo: this may not be useful
           if (abs(time_diff) > 30) {
             std::cout << "Warning: " << time_diff << " second differential between sim_time and current measurement." << std::endl;
+            std::cout << "Simulation time:  " << std::setprecision(12) << node->get_clock()->now().seconds() << std::endl;
+            std::cout << "Measurement time: " << std::setprecision(12) << meas_msg.t_b * 1e-9 << std::endl;
           }
 
           while (node->get_clock()->now().seconds() < meas_msg.t_b * 1e-9){
+            rclcpp::sleep_for(std::chrono::nanoseconds((long)1e6));
             rclcpp::spin_some(node);    // todo: may be better way
           }
         }
