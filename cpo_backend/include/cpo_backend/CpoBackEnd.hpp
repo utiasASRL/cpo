@@ -93,7 +93,7 @@ class CpoBackEnd : public rclcpp::Node {
   steam::ParallelizedCostTermCollection::Ptr smoothing_cost_terms_;
 
   /** \brief Cost term for prior on T_0g to help resolve roll, lock position */
-  steam::WeightedLeastSqCostTerm<6, 6>::Ptr pose_prior_cost_;
+  steam::ParallelizedCostTermCollection::Ptr pose_prior_cost_;
 
   /** \brief Loss function associated with TDCP costs */
   steam::LossFunctionBase::Ptr tdcp_loss_function_;

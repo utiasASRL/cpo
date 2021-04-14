@@ -143,15 +143,20 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
       }
     }
 
-    // todo: try locking T_0g instead when we already have a good estimate of it
-    // add prior on initial pose to deal with roll uncertainty and constrain r^0g_g to zero
-    steam::BaseNoiseModel<6>::Ptr
-        sharedNoiseModel(new steam::StaticNoiseModel<6>(pose_prior_cov_));
-    steam::TransformErrorEval::Ptr prior_error_func(new steam::TransformErrorEval(init_pose_, T_0g));
-    pose_prior_cost_ = steam::WeightedLeastSqCostTerm<6, 6>::Ptr(new steam::WeightedLeastSqCostTerm<6, 6>(
-        prior_error_func,
-        sharedNoiseModel,
-        pp_loss_function_));
+    // lock T_0g instead when we already have a good estimate of it
+    if (init_pose_estimated_) {
+      T_0g_statevar->setLock(true);
+    } else {
+      // add prior on initial pose to deal with roll uncertainty and constrain r^0g_g to zero
+      steam::BaseNoiseModel<6>::Ptr
+          sharedNoiseModel(new steam::StaticNoiseModel<6>(pose_prior_cov_));
+      steam::TransformErrorEval::Ptr prior_error_func(new steam::TransformErrorEval(init_pose_, T_0g));
+      auto pose_prior_factor_ = steam::WeightedLeastSqCostTerm<6, 6>::Ptr(new steam::WeightedLeastSqCostTerm<6, 6>(
+          prior_error_func,
+          sharedNoiseModel,
+          pp_loss_function_));
+      pose_prior_cost_->add(pose_prior_factor_);
+    }
 
     steam::BaseNoiseModel<4>::Ptr nonholonomic_noise_model(new steam::StaticNoiseModel<4>(nonholonomic_cov_));
     trajectory_ = std::make_shared<SteamTrajInterface>(SteamTrajInterface(smoothing_factor_information_, true));
@@ -383,6 +388,7 @@ void CpoBackEnd::initializeProblem() {
   tdcp_cost_terms_.reset(new steam::ParallelizedCostTermCollection());
   nonholonomic_cost_terms_.reset(new steam::ParallelizedCostTermCollection());
   smoothing_cost_terms_.reset(new steam::ParallelizedCostTermCollection());
+  pose_prior_cost_.reset(new steam::ParallelizedCostTermCollection());
 
   // set up the steam problem
   problem_.reset(new steam::OptimizationProblem());
@@ -427,7 +433,8 @@ void CpoBackEnd::printCosts(bool final) {
             << nonholonomic_cost_terms_->numCostTerms() << std::endl;
   std::cout << "Smoothing:           " << smoothing_cost_terms_->cost() << "        Terms:  "
             << smoothing_cost_terms_->numCostTerms() << std::endl;
-  std::cout << "Pose Prior:          " << pose_prior_cost_->cost() << "        Terms:  1" << std::endl;
+  std::cout << "Pose Prior:          " << pose_prior_cost_->cost() << "        Terms:  "
+            << pose_prior_cost_->numCostTerms() << std::endl;
 }
 
 void CpoBackEnd::addMsgToWindow(const cpo_interfaces::msg::TDCP::SharedPtr &msg) {
