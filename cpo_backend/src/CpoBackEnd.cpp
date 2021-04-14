@@ -246,22 +246,25 @@ void CpoBackEnd::_timedCallback() {
     return;
   }
 
-  lgmath::se3::Transformation T_0g = init_pose_;
-  lgmath::se3::Transformation T_n0 = trajectory_->getInterpPoseEval(t_n)->evaluate();
-  lgmath::se3::Transformation T_n10 = trajectory_->getInterpPoseEval(t_n1)->evaluate();
+  lgmath::se3::TransformationWithCovariance T_0g = init_pose_;
+  lgmath::se3::TransformationWithCovariance T_n0 = trajectory_->getInterpPoseEval(t_n)->evaluate();
+  lgmath::se3::TransformationWithCovariance T_n10 = trajectory_->getInterpPoseEval(t_n1)->evaluate();
 
-  lgmath::se3::Transformation T_ng = T_n0 * T_0g;
-  lgmath::se3::Transformation T_n_n1 = T_n0 * T_n10.inverse();
-
-  Eigen::Matrix<double, 6, 6> dummy_covariance = Eigen::Matrix<double, 6, 6>::Identity();   // todo: get correct cov
+  lgmath::se3::TransformationWithCovariance T_ng = T_n0 * T_0g;                // todo: get correct cov
+  lgmath::se3::TransformationWithCovariance T_n_n1 = T_n0 * T_n10.inverse();
 
   // publish
-  geometry_msgs::msg::PoseWithCovariance relative_pose_msg = toPoseMsg(T_n_n1, dummy_covariance);
+  publishPoses(T_ng, T_n_n1);
+  saveToFile(t_n, t_n1, T_ng, T_n_n1);
+}
+
+void CpoBackEnd::publishPoses(const lgmath::se3::TransformationWithCovariance &T_ng,
+                              const lgmath::se3::TransformationWithCovariance &T_n_n1) {
+  geometry_msgs::msg::PoseWithCovariance relative_pose_msg = toPoseMsg(T_n_n1);
   vehicle_publisher_->publish(relative_pose_msg);
-  geometry_msgs::msg::PoseWithCovariance enu_pose_msg = toPoseMsg(T_ng, dummy_covariance);
+  geometry_msgs::msg::PoseWithCovariance enu_pose_msg = toPoseMsg(T_ng);
   enu_publisher_->publish(enu_pose_msg);
   std::cout << "Message published! " << std::endl;
-  saveToFile(t_n, t_n1, T_ng, T_n_n1);
 }
 
 void CpoBackEnd::saveToFile(double t_n,
@@ -437,8 +440,7 @@ void CpoBackEnd::addMsgToWindow(const cpo_interfaces::msg::TDCP::SharedPtr &msg)
   }
 }
 
-geometry_msgs::msg::PoseWithCovariance CpoBackEnd::toPoseMsg(const lgmath::se3::Transformation &T,
-                                                             const Eigen::Matrix<double, 6, 6> &cov) {
+geometry_msgs::msg::PoseWithCovariance CpoBackEnd::toPoseMsg(lgmath::se3::TransformationWithCovariance T) {
   Eigen::Quaterniond q(T.C_ba());
   Eigen::Vector3d r_ba_ina = T.r_ba_ina();
 
@@ -451,8 +453,11 @@ geometry_msgs::msg::PoseWithCovariance CpoBackEnd::toPoseMsg(const lgmath::se3::
   msg.pose.orientation.set__z(q.z());
   msg.pose.orientation.set__w(q.w());
 
+  if (!T.covarianceSet())
+    T.setZeroCovariance();
+
   std::array<double, 36> temp{};
-  Eigen::Matrix<double, 6, 6>::Map(temp.data()) = cov;
+  Eigen::Matrix<double, 6, 6>::Map(temp.data()) = T.cov();
   msg.set__covariance(temp);
 
   return msg;

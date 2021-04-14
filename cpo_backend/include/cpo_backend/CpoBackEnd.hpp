@@ -50,9 +50,12 @@ class CpoBackEnd : public rclcpp::Node {
                   const lgmath::se3::Transformation &T_ng,
                   const lgmath::se3::Transformation &T_n_n1) const;
 
+  /** \brief Takes in Transforms and calls ROS publishers */
+  void publishPoses(const lgmath::se3::TransformationWithCovariance &T_ng,
+                    const lgmath::se3::TransformationWithCovariance &T_n_n1);
+
   /** \brief Helper to convert lgmath Transform to ROS2 msg */
-  static geometry_msgs::msg::PoseWithCovariance toPoseMsg(const lgmath::se3::Transformation& T,
-                                                   const Eigen::Matrix<double, 6, 6>& cov);
+  static geometry_msgs::msg::PoseWithCovariance toPoseMsg(lgmath::se3::TransformationWithCovariance T);
 
   /** \brief Subscriber for TDCP msgs */
   rclcpp::Subscription<cpo_interfaces::msg::TDCP>::SharedPtr subscription_;
