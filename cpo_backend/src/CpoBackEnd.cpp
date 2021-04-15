@@ -380,7 +380,7 @@ void CpoBackEnd::getParams() {
 
 void CpoBackEnd::initializeProblem() {
   // setup loss functions
-  tdcp_loss_function_.reset(new steam::DcsLossFunc(2.0));
+  tdcp_loss_function_.reset(new steam::CauchyLossFunc(2.0));
   nonholonomic_loss_function_.reset(new steam::L2LossFunc());
   pp_loss_function_.reset(new steam::L2LossFunc());
 
@@ -449,7 +449,7 @@ void CpoBackEnd::addMsgToWindow(const cpo_interfaces::msg::TDCP::SharedPtr &msg)
   // add latest message
   double dist_since_last = msgs_.empty() ? 0 : (toEigenVec3d(msg->enu_pos) - toEigenVec3d(msgs_.back().first.enu_pos)).norm();
 
-  if (dist_since_last > 1.2) dist_since_last = 0.9;   // hacky error checking. todo: something else
+  if (dist_since_last > 0) dist_since_last = 0.9 * (msg->t_b - msg->t_a) * 1e-9;    // hacky  todo: something else
 
   Eigen::Vector3d r_ba_est{dist_since_last, 0.0, 0.0};
   lgmath::se3::Transformation new_T_estimate = lgmath::se3::Transformation(Eigen::Matrix3d::Identity(), r_ba_est);

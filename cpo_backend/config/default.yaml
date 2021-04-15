@@ -10,15 +10,15 @@ cpo_back_end:
     use_sim_time: true
 
     tdcp_cov: 0.01
-    non_holo_y: 0.1
-    non_holo_z: 0.1
-    non_holo_roll: 0.1
-    non_holo_pitch: 0.1
-    lin_acc_std_dev_x: 1.0
-    lin_acc_std_dev_y: 0.1
+    non_holo_y: 0.01
+    non_holo_z: 0.01
+    non_holo_roll: 0.01
+    non_holo_pitch: 0.01
+    lin_acc_std_dev_x: 0.5
+    lin_acc_std_dev_y: 0.01
     lin_acc_std_dev_z: 0.1
-    ang_acc_std_dev_x: 0.1
-    ang_acc_std_dev_y: 0.1
+    ang_acc_std_dev_x: 0.01
+    ang_acc_std_dev_y: 0.01
     ang_acc_std_dev_z: 0.1
     prior_cov_x: 0.001
     prior_cov_y: 0.001
@@ -28,4 +28,4 @@ cpo_back_end:
     prior_cov_ang3: 1.0
 
     solver_verbose: true
-    solver_max_iterations: 10
+    solver_max_iterations: 50

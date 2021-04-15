@@ -19,7 +19,7 @@ class ClockServer : public rclcpp::Node {
     publisher_ = this->create_publisher<ClockMsg>("clock", 10);
 
     this->declare_parameter("first_meas_time", 1613419600);    // approximately 15c
-    this->declare_parameter("playback_rate", 2);
+    this->declare_parameter("playback_rate", 5);
     this->declare_parameter("publish_rate", 20);
 
     first_meas_time_ = this->get_parameter("first_meas_time").as_int() * (long)1e9;
