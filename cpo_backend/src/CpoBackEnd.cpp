@@ -239,8 +239,9 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
     if (!fixed_rate_publish_) {
       double t_n = (double) msgs_.back().first.t_b * 1e-9;
       double t_n1 = (double) msgs_.back().first.t_a * 1e-9;
-      lgmath::se3::Transformation T_ng = statevars.back()->getValue() * init_pose_;
-      const auto &T_n_n1 = msgs_.back().second;
+      Eigen::Matrix4d T_ng_eig = statevars.back()->getValue().matrix() * init_pose_.matrix(); //  rot2vec bug workaround
+      auto T_ng = lgmath::se3::Transformation(T_ng_eig);
+      const auto &T_n_n1 = msgs_.back().second;     // should be fine as is
       publishPoses(T_ng, T_n_n1);
       saveToFile(t_n, t_n1, T_ng, T_n_n1);
     }
@@ -296,14 +297,17 @@ void CpoBackEnd::saveToFile(double t_n,
   std::ofstream outstream;
   outstream.open(results_path_, std::ofstream::out | std::ofstream::app);
 
-  const auto r_ng_g = T_ng.r_ba_ina();
+  const Eigen::Vector3d r_ng_g = T_ng.r_ba_ina();
 
   // also get receiver position estimate for comparing to ground truth
-  auto r_sg_g = (tf_gps_vehicle_->evaluate() * T_ng).r_ba_ina();
+//  Eigen::Vector3d r_sg_g = (tf_gps_vehicle_->evaluate() * T_ng).r_ba_ina();   // lgmath bug so avoiding operator*()
+
+  Eigen::Matrix4d T_sg = tf_gps_vehicle_->evaluate().matrix() * T_ng.matrix();
+  Eigen::Matrix4d T_gs = T_sg.inverse();
 
   // save times and global position for easy plotting
   outstream << std::setprecision(12) << t_n << ", " << t_n1 << ", ";
-  outstream << r_sg_g[0] << ", " << r_sg_g[1] << ", " << r_sg_g[2] << ", ";
+  outstream << T_gs(0,3) << ", " << T_gs(1,3) << ", " << T_gs(2,3) << ", ";
   outstream << r_ng_g[0] << ", " << r_ng_g[1] << ", " << r_ng_g[2] << ", ";
 
   // save full transformations as well. Transpose needed to print in row-major order
@@ -469,7 +473,18 @@ void CpoBackEnd::addMsgToWindow(const cpo_interfaces::msg::TDCP::SharedPtr &msg)
 
   // if we have a full queue, discard the oldest msg
   while (msgs_.size() > window_size_) {
-    init_pose_ = msgs_.front().second * init_pose_; // incrementing indices so need to update our T_0g estimate
+
+    // current workaround for lgmath rot2vec() bug
+    if ((init_pose_.matrix())(0,0) > -0.95){
+      init_pose_ = msgs_.front().second * init_pose_; // incrementing indices so need to update our T_0g estimate
+    } else {
+      Eigen::Matrix4d init_pose_eigen = msgs_.front().second.matrix() * init_pose_.matrix();
+      init_pose_ = lgmath::se3::Transformation(init_pose_eigen);    // todo: this workaround won't work because constructor also calls reproject
+
+      Eigen::Matrix4d diff = init_pose_.matrix() - init_pose_eigen;
+      std::cout << "diff norm " << diff.norm() << std::endl;    // if this is greater than ~0.01 we have a problem, don't know how to solve yet
+    }
+
     msgs_.pop_front();
   }
 }
