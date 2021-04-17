@@ -419,6 +419,9 @@ void CpoBackEnd::initializeProblem() {
 
 void CpoBackEnd::resetEstimator() {
   std::cout << "Clearing window and resetting the estimator." << std::endl;
+  for (int i = 0; i < 50; ++i){
+    std::cout << "RESET ESTIMATOR " << i << std::endl;
+  }
   msgs_.clear();
   trajectory_ = nullptr;
   init_pose_estimated_ = false;
@@ -447,12 +450,20 @@ void CpoBackEnd::addMsgToWindow(const cpo_interfaces::msg::TDCP::SharedPtr &msg)
   }
 
   // add latest message
-  double dist_since_last = msgs_.empty() ? 0 : (toEigenVec3d(msg->enu_pos) - toEigenVec3d(msgs_.back().first.enu_pos)).norm();
+  lgmath::se3::Transformation new_T_estimate;
+  if (trajectory_ != nullptr) {
+    lgmath::se3::Transformation T_b0 = trajectory_->getInterpPoseEval(steam::Time((int64_t)msg->t_b))->evaluate();
+    lgmath::se3::Transformation T_a0 = trajectory_->getInterpPoseEval(steam::Time((int64_t)msg->t_a))->evaluate();
+    new_T_estimate = T_b0 * T_a0.inverse();
+  } else {
+    double dist_since_last =
+        msgs_.empty() ? 0 : (toEigenVec3d(msg->enu_pos) - toEigenVec3d(msgs_.back().first.enu_pos)).norm();
 
-  if (dist_since_last > 0) dist_since_last = 0.9 * (msg->t_b - msg->t_a) * 1e-9;    // hacky  todo: something else
+    if (dist_since_last > 0) dist_since_last = 0.9 * (msg->t_b - msg->t_a) * 1e-9;    // hacky  todo: something else
 
-  Eigen::Vector3d r_ba_est{dist_since_last, 0.0, 0.0};
-  lgmath::se3::Transformation new_T_estimate = lgmath::se3::Transformation(Eigen::Matrix3d::Identity(), r_ba_est);
+    Eigen::Vector3d r_ba_est{dist_since_last, 0.0, 0.0};
+    new_T_estimate = lgmath::se3::Transformation(Eigen::Matrix3d::Identity(), r_ba_est);
+  }
 
   msgs_.emplace_back(*msg, new_T_estimate);
 
