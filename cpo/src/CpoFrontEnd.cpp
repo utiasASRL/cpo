@@ -23,6 +23,8 @@ CpoFrontEnd::CpoFrontEnd()
   log_serial_path = "/home/ben/CLionProjects/ros2-ws/src/cpo/data/" + log_serial_filename;
   rtcm_path = this->get_parameter("data_path").as_string();
 
+  use_sim_time = this->get_parameter("use_sim_time").as_bool();
+
   if (!from_serial && !fs::exists(rtcm_path)) {
     throw std::runtime_error("RTCM data file not found.");
   }

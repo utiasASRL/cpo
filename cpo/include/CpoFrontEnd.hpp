@@ -98,8 +98,11 @@ class CpoFrontEnd : public rclcpp::Node {
   /** \brief File path for logging serial data */
   std::string log_serial_path;
 
-  /** Location to find binary RTCM file when reading logged data */
+  /** \brief Location to find binary RTCM file when reading logged data */
   std::string rtcm_path;
+
+  /** \brief  */
+  bool use_sim_time;
 
  private:
 

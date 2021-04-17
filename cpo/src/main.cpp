@@ -54,6 +54,11 @@ int main(int argc, char **argv) {
 
     // phase observation received
     if (rtcm_status == 1) {
+      if (node->use_sim_time && node->rtcm.obs.data->time.time < (node->get_clock()->now().seconds() - 5)){
+        std::cout << "Found old message. Continuing. " <<  (node->get_clock()->now().seconds() - node->rtcm.obs.data->time.time) << std::endl;
+        continue;     // todo: sorta hacky and not well tested
+      }
+
       for (unsigned i = 0; i < node->rtcm.obs.n; ++i) {
         obsd_t &obs = node->rtcm.obs.data[i];
 
@@ -174,7 +179,7 @@ int main(int argc, char **argv) {
           meas_msg.pairs.push_back(pair_msg);
         }
         // publish the pseudo-measurement to be used by the back-end
-        if (node->get_parameter("use_sim_time").as_bool()) {
+        if (node->use_sim_time) {
           // todo: cutoff for older messages?
 
           auto time_diff = node->get_clock()->now().seconds() - meas_msg.t_b * 1e-9;     // todo: this may not be useful
