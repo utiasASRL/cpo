@@ -44,7 +44,7 @@ ament_target_dependencies(cpo_backend
         Eigen3
         rclcpp
         cpo_interfaces
-        lgmath
+        #        lgmath
         #        steam              # this line causing /targ_PATH set to NOTFOUND error
         )
 target_include_directories(cpo_backend PUBLIC
@@ -53,6 +53,7 @@ target_include_directories(cpo_backend PUBLIC
         ${steam_INCLUDE_DIRS}
         include)
 target_link_libraries(cpo_backend
+        lgmath
         steam
         cpo_steam_extensions
         ${CMAKE_THREAD_LIBS_INIT})
