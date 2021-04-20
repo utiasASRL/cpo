@@ -234,16 +234,20 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
     }
 
     // update our orientation estimate
-    init_pose_ = T_0g_statevar->getValue();
+    if (!T_0g_statevar->isLocked())
+      init_pose_ = T_0g_statevar->getValue();
 
     if (!fixed_rate_publish_) {
       double t_n = (double) msgs_.back().first.t_b * 1e-9;
       double t_n1 = (double) msgs_.back().first.t_a * 1e-9;
-      Eigen::Matrix4d T_ng_eig = statevars.back()->getValue().matrix() * init_pose_.matrix(); //  rot2vec bug workaround
-      auto T_ng = lgmath::se3::Transformation(T_ng_eig);
+      double t_0 = (double) msgs_.front().first.t_a * 1e-9;
+      lgmath::se3::Transformation T_ng = statevars.back()->getValue() * init_pose_;
       const auto &T_n_n1 = msgs_.back().second;     // should be fine as is
-      publishPoses(T_ng, T_n_n1);
-      saveToFile(t_n, t_n1, T_ng, T_n_n1);
+      publishPoses(init_pose_, T_n_n1);
+      saveToFile(t_0, 0, init_pose_, T_n_n1);
+
+      std::cout << "Last time was: " << std::setprecision(12) << t_n << std::setprecision(6) << std::endl;
+      std::cout << "Time zero was: " << std::setprecision(12) << t_0 << std::setprecision(6) << std::endl;
     }
 
     init_pose_estimated_ = true;
@@ -251,7 +255,7 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
   }
 }
 
-void CpoBackEnd::_timedCallback() {
+void CpoBackEnd::_timedCallback() {     // todo: not updated
   if (first_window_ || !init_pose_estimated_ || trajectory_ == nullptr) {
     std::cout << "Not publishing because don't currently have a valid pose estimate." << std::endl;
     return;
@@ -276,44 +280,44 @@ void CpoBackEnd::_timedCallback() {
   lgmath::se3::TransformationWithCovariance T_n_n1 = T_n0 * T_n10.inverse();
 
   // publish
-  publishPoses(T_ng, T_n_n1);
+  publishPoses(T_ng, T_n_n1);       // todo: also change this to back of window (?)
   saveToFile(t_n, t_n1, T_ng, T_n_n1);
 }
 
-void CpoBackEnd::publishPoses(const lgmath::se3::TransformationWithCovariance &T_ng,
+void CpoBackEnd::publishPoses(const lgmath::se3::TransformationWithCovariance &T_0g,
                               const lgmath::se3::TransformationWithCovariance &T_n_n1) {
   geometry_msgs::msg::PoseWithCovariance relative_pose_msg = toPoseMsg(T_n_n1);
   vehicle_publisher_->publish(relative_pose_msg);
-  geometry_msgs::msg::PoseWithCovariance enu_pose_msg = toPoseMsg(T_ng);
+  geometry_msgs::msg::PoseWithCovariance enu_pose_msg = toPoseMsg(T_0g);
   enu_publisher_->publish(enu_pose_msg);
   std::cout << "Message published! " << std::endl;
 }
 
 void CpoBackEnd::saveToFile(double t_n,
                             double t_n1,
-                            const lgmath::se3::Transformation &T_ng,
+                            const lgmath::se3::Transformation &T_0g,
                             const lgmath::se3::Transformation &T_n_n1) const {
   // append latest estimate to file
   std::ofstream outstream;
   outstream.open(results_path_, std::ofstream::out | std::ofstream::app);
 
-  const Eigen::Vector3d r_ng_g = T_ng.r_ba_ina();
+  const Eigen::Vector3d r_0g_g = T_0g.r_ba_ina();     // note: could be sensitive to C_0g changes
 
   // also get receiver position estimate for comparing to ground truth
 //  Eigen::Vector3d r_sg_g = (tf_gps_vehicle_->evaluate() * T_ng).r_ba_ina();   // lgmath bug so avoiding operator*()
 
-  Eigen::Matrix4d T_sg = tf_gps_vehicle_->evaluate().matrix() * T_ng.matrix();
+  Eigen::Matrix4d T_sg = tf_gps_vehicle_->evaluate().matrix() * T_0g.matrix();
   Eigen::Matrix4d T_gs = T_sg.inverse();
 
   // save times and global position for easy plotting
   outstream << std::setprecision(12) << t_n << ", " << t_n1 << ", ";
   outstream << T_gs(0,3) << ", " << T_gs(1,3) << ", " << T_gs(2,3) << ", ";
-  outstream << r_ng_g[0] << ", " << r_ng_g[1] << ", " << r_ng_g[2] << ", ";
+  outstream << r_0g_g[0] << ", " << r_0g_g[1] << ", " << r_0g_g[2] << ", ";
 
   // save full transformations as well. Transpose needed to print in row-major order
-  auto temp = T_ng.matrix().transpose();
-  auto T_ng_flat = std::vector<double>(temp.data(), temp.data() + 16);
-  for (auto entry : T_ng_flat) outstream << entry << ",";
+  auto temp = T_0g.matrix().transpose();
+  auto T_0g_flat = std::vector<double>(temp.data(), temp.data() + 16);
+  for (auto entry : T_0g_flat) outstream << entry << ",";
 
   temp = T_n_n1.matrix().transpose();
   auto T_n_n1_flat = std::vector<double>(temp.data(), temp.data() + 16);
@@ -473,18 +477,7 @@ void CpoBackEnd::addMsgToWindow(const cpo_interfaces::msg::TDCP::SharedPtr &msg)
 
   // if we have a full queue, discard the oldest msg
   while (msgs_.size() > window_size_) {
-
-    // current workaround for lgmath rot2vec() bug
-    if ((init_pose_.matrix())(0,0) > -0.95){
-      init_pose_ = msgs_.front().second * init_pose_; // incrementing indices so need to update our T_0g estimate
-    } else {
-      Eigen::Matrix4d init_pose_eigen = msgs_.front().second.matrix() * init_pose_.matrix();
-      init_pose_ = lgmath::se3::Transformation(init_pose_eigen);    // todo: this workaround won't work because constructor also calls reproject
-
-      Eigen::Matrix4d diff = init_pose_.matrix() - init_pose_eigen;
-      std::cout << "diff norm " << diff.norm() << std::endl;    // if this is greater than ~0.01 we have a problem, don't know how to solve yet
-    }
-
+    init_pose_ = msgs_.front().second * init_pose_; // incrementing indices so need to update our T_0g estimate
     msgs_.pop_front();
   }
 }
