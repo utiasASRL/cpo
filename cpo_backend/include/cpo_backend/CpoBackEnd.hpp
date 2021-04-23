@@ -127,6 +127,9 @@ class CpoBackEnd : public rclcpp::Node {
   /** \brief Our estimate of T_0g, stored to initialize the next optimization problem */
   lgmath::se3::Transformation init_pose_;
 
+  /** \brief DEBUGGING Keeping track of T_0g separately to detect lgmath reproject issues */
+  Eigen::Matrix4d init_pose_eig_;
+
   /** \brief Keep track of whether we have T_0g estimate or need to get one from code solution */
   bool init_pose_estimated_ = false;
 

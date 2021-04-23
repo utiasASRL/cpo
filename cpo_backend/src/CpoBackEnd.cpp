@@ -234,8 +234,10 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
     }
 
     // update our orientation estimate
-    if (!T_0g_statevar->isLocked())
+    if (!T_0g_statevar->isLocked()) {
       init_pose_ = T_0g_statevar->getValue();
+      init_pose_eig_ = T_0g_statevar->getValue().matrix();
+    }
 
     if (!fixed_rate_publish_) {
       double t_n = (double) msgs_.back().first.t_b * 1e-9;
@@ -306,13 +308,23 @@ void CpoBackEnd::saveToFile(double t_n,
   // also get receiver position estimate for comparing to ground truth
 //  Eigen::Vector3d r_sg_g = (tf_gps_vehicle_->evaluate() * T_ng).r_ba_ina();   // lgmath bug so avoiding operator*()
 
-  Eigen::Matrix4d T_sg = tf_gps_vehicle_->evaluate().matrix() * T_0g.matrix();
+//  Eigen::Matrix4d T_sg = tf_gps_vehicle_->evaluate().matrix() * T_0g.matrix();
+  Eigen::Matrix4d T_sg = tf_gps_vehicle_->evaluate().matrix() * init_pose_.matrix();  // should be same as above but more explicit
+  Eigen::Matrix4d T_sg_eig = tf_gps_vehicle_->evaluate().matrix() * init_pose_eig_;   // todo: see if this helps
   Eigen::Matrix4d T_gs = T_sg.inverse();
+  Eigen::Matrix4d T_gs_eig = T_sg_eig.inverse();
 
   // save times and global position for easy plotting
   outstream << std::setprecision(12) << t_n << ", " << t_n1 << ", ";
   outstream << T_gs(0,3) << ", " << T_gs(1,3) << ", " << T_gs(2,3) << ", ";
+  outstream << T_gs_eig(0,3) << ", " << T_gs_eig(1,3) << ", " << T_gs_eig(2,3) << ", ";     // this line is kicking columns but not using others yet so should be okay
   outstream << r_0g_g[0] << ", " << r_0g_g[1] << ", " << r_0g_g[2] << ", ";
+
+  for (int i = 0; i < 2; ++i) {
+    if (fabs(T_gs(i,3) - T_gs_eig(i,3)) > 0.02){
+      std::cout << "Warning: lgmath jump likely occurred! i: " << i << " diff: " << T_gs(i,3) - T_gs_eig(i,3) << std::endl;
+    }
+  }
 
   // save full transformations as well. Transpose needed to print in row-major order
   auto temp = T_0g.matrix().transpose();
@@ -410,6 +422,7 @@ void CpoBackEnd::initializeProblem() {
     init_pose_vec << toEigenVec3d(msgs_.front().first.enu_pos), 0, 0, -1 * theta;
 
     init_pose_ = lgmath::se3::Transformation(init_pose_vec);
+    init_pose_eig_ = init_pose_.matrix();     // probably not necessary
 
     if (first_window_) {
       // save ENU origin to results file
@@ -477,7 +490,24 @@ void CpoBackEnd::addMsgToWindow(const cpo_interfaces::msg::TDCP::SharedPtr &msg)
 
   // if we have a full queue, discard the oldest msg
   while (msgs_.size() > window_size_) {
+
+    if (msgs_.front().first.t_a * 1e-9 > 1613417288 && msgs_.front().first.t_a * 1e-9 < 1613417304){    // todo: these times for 15a without lgmath workaround
+      std::cout << msgs_.front().first.t_a * 1e-9 << " seconds - msgs_.front().second..." << msgs_.front().second << " init_pose_ " << init_pose_ << std::endl;
+      std::cout << "init_pose_eig_ \n" << init_pose_eig_ << std::endl;
+    }
+
     init_pose_ = msgs_.front().second * init_pose_; // incrementing indices so need to update our T_0g estimate
+    init_pose_eig_ = msgs_.front().second.matrix() * init_pose_eig_; // todo: trying something here
+
+    if (msgs_.front().first.t_a * 1e-9 > 1613417288 && msgs_.front().first.t_a * 1e-9 < 1613417304){
+      std::cout << "After multiplying... init_pose_ " << init_pose_ << std::endl;
+      std::cout << "init_pose_eig_ \n" << init_pose_eig_ << std::endl;
+      std::cout << "Inverses... init_pose_ " << init_pose_.inverse() << std::endl;
+      std::cout << "init_pose_eig_ \n" << init_pose_eig_.inverse() << std::endl;
+
+    }
+
+
     msgs_.pop_front();
   }
 }

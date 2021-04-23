@@ -115,6 +115,8 @@ def main():
     plt.plot(r_rtk[:, 1] - r_gt[0, 1], r_rtk[:, 2] - r_gt[0, 2], label='RTK Ground Truth', c='C0')
 
     plt.plot(estimates[:, 2] - estimates[0, 2], estimates[:, 3] - estimates[0, 3], label='Estimated', c='C1')
+    plt.plot(estimates[:, 5] - estimates[0, 5], estimates[:, 6] - estimates[0, 6], label='Eigen multiplication', c='C2')        # debug
+    # plt.plot(estimates[:, 2], estimates[:, 3], label='Estimated', c='C3')             # debug
 
     plt.axis('equal')
     plt.title('Overhead View - {0} Dataset'.format(dataset))
@@ -135,15 +137,21 @@ def main():
                         (estimates[idx, 2] - estimates[0, 2]) - (row[1] - r_gt[0, 1]),  # estimator error x
                         (estimates[idx, 3] - estimates[0, 3]) - (row[2] - r_gt[0, 2]),  # "" y
                         (estimates[idx, 4] - estimates[0, 4]) - (row[3] - r_gt[0, 3]),  # "" z
-                        row[7],  # distance along path      (placeholder)
+                        row[7],  # distance along path
+                        (estimates[idx, 5] - estimates[0, 5]) - (row[1] - r_gt[0, 1]),  # error x    # from eigen, DEBUG
+                        (estimates[idx, 6] - estimates[0, 6]) - (row[2] - r_gt[0, 2]),  # "" y
+                        (estimates[idx, 7] - estimates[0, 7]) - (row[3] - r_gt[0, 3]),  # "" z
                         ])
     relative_errors = np.array(tmp)
 
     fig2, ax2 = plt.subplots(nrows=3, ncols=1, figsize=[8, 8])
-    fig2.subplots_adjust(left=0.10, bottom=0.06, right=0.96, top=0.96)
+    # fig2, ax2 = plt.subplots(nrows=2, ncols=1, figsize=[8, 5])
+    fig2.subplots_adjust(left=0.10, bottom=0.06, right=0.96, top=0.93)
     ax2[0].plot(relative_errors[:, 7] - relative_errors[0, 7], relative_errors[:, 4])       # x errors
     ax2[1].plot(relative_errors[:, 7] - relative_errors[0, 7], relative_errors[:, 5])       # y errors
     ax2[2].plot(relative_errors[:, 7] - relative_errors[0, 7], np.sqrt(relative_errors[:, 4]**2 + relative_errors[:, 5]**2))       # planar errors
+    ax2[2].plot(relative_errors[:, 7] - relative_errors[0, 7], np.sqrt(relative_errors[:, 8]**2 + relative_errors[:, 9]**2))       # planar errors # eigen
+    # ax2[0].plot(relative_errors[:, 0], np.sqrt(relative_errors[:, 4]**2 + relative_errors[:, 5]**2))       # planar errors by time
 
     ax2[0].set_title('Position Errors wrt Ground Truth - {0}'.format(dataset))
     ax2[2].set_xlabel('Distance Along Path (m)')
@@ -153,6 +161,15 @@ def main():
     ax2[1].set_ylim([-1.6, 1.6])
     ax2[2].set_ylabel('2D Position Error (m)')
     ax2[2].set_ylim([0, 2])
+
+    # errors by time
+    fig3 = plt.figure(3, figsize=[8, 3])
+    plt.plot(relative_errors[:, 0] - 1613400000, np.sqrt(relative_errors[:, 4]**2 + relative_errors[:, 5]**2), c='C1')  # errors by time
+    plt.plot(relative_errors[:, 0] - 1613400000, np.sqrt(relative_errors[:, 8]**2 + relative_errors[:, 9]**2), c='C2')  # errors by time  #eigen
+    plt.xlabel('Timestamp - 1613400000 (s)')
+    plt.ylabel('2D Position Error (m)')
+    plt.ylim([0, 2])
+    plt.tight_layout()
 
     plt.show()
 
