@@ -20,7 +20,7 @@ ax.set_ylim(-5, 5)
 ax.set_title('Live Overhead View')
 ax.set_xlabel('Easting (m)')
 ax.set_ylabel('Northing (m)')
-ax.legend(loc="lower left")
+ax.legend(loc="upper right")
 ax.set_aspect('equal')
 
 
@@ -51,8 +51,8 @@ class TdcpSubscriber(Node):
     array = plot.get_offsets()
     array = np.append(array, [point], axis=0)
     plot.set_offsets(array)
-    ax.set_xlim(array[:, 0].min() - 5, array[:, 0].max() + 5)
-    ax.set_ylim(array[:, 1].min() - 5, array[:, 1].max() + 5)
+    # ax.set_xlim(array[:, 0].min() - 5, array[:, 0].max() + 5)
+    # ax.set_ylim(array[:, 1].min() - 5, array[:, 1].max() + 5)
     fig.canvas.draw()
 
   def enu_est_callback(self, msg):
@@ -65,6 +65,8 @@ class TdcpSubscriber(Node):
     array = plot2.get_offsets()
     array = np.append(array, [point], axis=0)
     plot2.set_offsets(array)
+    ax.set_xlim(array[:, 0].min() - 5, array[:, 0].max() + 5)
+    ax.set_ylim(array[:, 1].min() - 5, array[:, 1].max() + 5)
     fig.canvas.draw()
 
   tdcp_msg_count = 0
