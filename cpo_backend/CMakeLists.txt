@@ -3,7 +3,7 @@ project(cpo_backend)
 
 set(CMAKE_CXX_STANDARD 17)
 
-add_definitions(-DSTEAM_DEFAULT_NUM_OPENMP_THREADS=1)
+add_definitions(-DSTEAM_DEFAULT_NUM_OPENMP_THREADS=1)       # used to make deterministic
 
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)

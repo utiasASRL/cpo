@@ -139,6 +139,11 @@ class CpoBackEnd : public rclcpp::Node {
   /** \brief Size of the optimization window in msgs */
   uint window_size_;
 
+  /** \brief If true, T_0g will be locked within a window once first estimated.
+   *   Otherwise we'll apply a prior and re-estimate each loop.
+   */
+  bool lock_first_pose_;
+
   /** \brief Time period (in seconds) since last msg we will trust our odometry estimates */
   double traj_timeout_limit_;
 

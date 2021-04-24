@@ -144,7 +144,7 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
     }
 
     // lock T_0g instead when we already have a good estimate of it
-    if (init_pose_estimated_) {
+    if (init_pose_estimated_ && lock_first_pose_) {
       T_0g_statevar->setLock(true);
     } else {
       // add prior on initial pose to deal with roll uncertainty and constrain r^0g_g to zero
@@ -358,6 +358,7 @@ void CpoBackEnd::getParams() {
   this->declare_parameter("roll_cov_ang2", 0.01);
   this->declare_parameter("roll_cov_ang3", 1.0);
   this->declare_parameter("window_size", 10);
+  this->declare_parameter("lock_first_pose", true);
   this->declare_parameter("results_path");
   this->declare_parameter("solver_verbose", false);
   this->declare_parameter("solver_max_iterations", 5);
@@ -392,6 +393,7 @@ void CpoBackEnd::getParams() {
   pose_prior_cov_(5, 5) = this->get_parameter("roll_cov_ang3").as_double();
 
   window_size_ = this->get_parameter("window_size").as_int();
+  lock_first_pose_ = this->get_parameter("lock_first_pose").as_bool();
   results_path_ = this->get_parameter("results_path").as_string();
   steam_verbose_ = this->get_parameter("solver_verbose").as_bool();
   steam_max_iterations_ = this->get_parameter("solver_max_iterations").as_int();
