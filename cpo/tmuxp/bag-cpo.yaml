@@ -17,6 +17,6 @@ windows:
     layout: main-horizontal
     panes:
       - ros2 run cpo_backend cpo_backend --ros-args --params-file ./src/cpo_backend/config/default.yaml
-      - ros2 bag play ~/CLionProjects/ros2-ws/bagfiles/feb15c --rate 0.5
+      - ros2 bag play ~/CLionProjects/ros2-ws/bagfiles/feb15c --rate 1
       - ros2 run cpo_analysis listener
       -

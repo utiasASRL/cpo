@@ -149,8 +149,8 @@ def main():
     fig2.subplots_adjust(left=0.10, bottom=0.06, right=0.96, top=0.93)
     ax2[0].plot(relative_errors[:, 7] - relative_errors[0, 7], relative_errors[:, 4])       # x errors
     ax2[1].plot(relative_errors[:, 7] - relative_errors[0, 7], relative_errors[:, 5])       # y errors
-    ax2[2].plot(relative_errors[:, 7] - relative_errors[0, 7], np.sqrt(relative_errors[:, 4]**2 + relative_errors[:, 5]**2))       # planar errors
-    ax2[2].plot(relative_errors[:, 7] - relative_errors[0, 7], np.sqrt(relative_errors[:, 8]**2 + relative_errors[:, 9]**2))       # planar errors # eigen
+    ax2[2].plot(relative_errors[:, 7] - relative_errors[0, 7], np.sqrt(relative_errors[:, 4]**2 + relative_errors[:, 5]**2), c='C1')       # planar errors
+    ax2[2].plot(relative_errors[:, 7] - relative_errors[0, 7], np.sqrt(relative_errors[:, 8]**2 + relative_errors[:, 9]**2), c='C2')       # planar errors # eigen
     # ax2[0].plot(relative_errors[:, 0], np.sqrt(relative_errors[:, 4]**2 + relative_errors[:, 5]**2))       # planar errors by time
 
     ax2[0].set_title('Position Errors wrt Ground Truth - {0}'.format(dataset))

@@ -2,7 +2,7 @@ cpo_back_end:
   ros__parameters:
     results_path: "/home/ben/CLionProjects/ros2-ws/src/cpo_analysis/data/estimates/cpo.csv" # todo: better name
     window_size: 10
-    lock_first_pose: false
+    lock_first_pose: true
     fixed_rate_publish: false
     publish_frequency: 10.0
     traj_timeout_limit: 5.0
