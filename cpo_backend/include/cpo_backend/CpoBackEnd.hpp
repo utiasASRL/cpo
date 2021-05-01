@@ -9,6 +9,13 @@
 
 #include <deque>
 
+struct CpoEdge {
+  cpo_interfaces::msg::TDCP msg;
+  lgmath::se3::Transformation T_ba;
+  Eigen::Matrix<double, 6, 1> v_a;
+  Eigen::Matrix<double, 6, 1> v_b;
+};
+
 /** \brief Class that subscribes to TDCP pseudo-measurements and outputs odometry estimates */
 class CpoBackEnd : public rclcpp::Node {
  public:
@@ -133,11 +140,8 @@ class CpoBackEnd : public rclcpp::Node {
   /** \brief Keep track of whether we have T_0g estimate or need to get one from code solution */
   bool init_pose_estimated_ = false;
 
-  /** \brief Store a window of TDCP messages. We use deque over queue to get access */
-  std::deque<std::pair<cpo_interfaces::msg::TDCP, lgmath::se3::Transformation>> msgs_;
-
-  /** \brief velocities. todo: better data structure for this and above */
-  std::deque<Eigen::Matrix<double, 6, 1>> vels_;
+  /** \brief Store a window of TDCP messages and our state estimates. We use deque over queue to get access */
+  std::deque<CpoEdge> edges_;
 
   /** \brief Size of the optimization window in msgs */
   uint window_size_;

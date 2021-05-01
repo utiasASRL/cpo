@@ -57,7 +57,7 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
   addMsgToWindow(msg_in);
 
   // don't attempt optimization if we don't have a full window
-  if (msgs_.size() < window_size_)
+  if (edges_.size() < window_size_)
     return;
 
   if (n >= 4) {
@@ -80,9 +80,9 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
     { // first pose in window gets locked
       TransformStateVar::Ptr temp_statevar_a(new TransformStateVar(lgmath::se3::Transformation()));
       TransformStateEvaluator::Ptr temp_pose_a = TransformStateEvaluator::MakeShared(temp_statevar_a);
-      VectorSpaceStateVar::Ptr temp_velocity_a = VectorSpaceStateVar::Ptr(new VectorSpaceStateVar(vels_.front()));    // technically off by one (?) - handle better later
+      VectorSpaceStateVar::Ptr temp_velocity_a = VectorSpaceStateVar::Ptr(new VectorSpaceStateVar(edges_.front().v_a));    // technically off by one (?) - handle better later
       temp_statevar_a->setLock(true);   // lock the first pose (but not the first velocity)
-      SteamTrajVar temp_a(steam::Time((int64_t)msgs_.front().first.t_a), temp_pose_a, temp_velocity_a);
+      SteamTrajVar temp_a(steam::Time((int64_t)edges_.front().msg.t_a), temp_pose_a, temp_velocity_a);
       statevars.push_back(temp_statevar_a);
       traj_states.push_back(temp_a);
 
@@ -93,14 +93,13 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
 
     lgmath::se3::Transformation T_k0_est;
     // loop over window to add states for other poses
-    int v_idx = 0;  // hacky - do better
-    for (auto &msg : msgs_) {
-      T_k0_est = msg.second * T_k0_est;     // k has been incremented so update T_k0
+    for (auto &edge : edges_) {
+      T_k0_est = edge.T_ba * T_k0_est;     // k has been incremented so update T_k0
 
       TransformStateVar::Ptr temp_statevar(new TransformStateVar(T_k0_est));
       TransformStateEvaluator::Ptr temp_pose = TransformStateEvaluator::MakeShared(temp_statevar);
-      VectorSpaceStateVar::Ptr temp_velocity = VectorSpaceStateVar::Ptr(new VectorSpaceStateVar(vels_[v_idx]));
-      SteamTrajVar temp(steam::Time((int64_t)msg.first.t_b), temp_pose, temp_velocity);
+      VectorSpaceStateVar::Ptr temp_velocity = VectorSpaceStateVar::Ptr(new VectorSpaceStateVar(edge.v_b));
+      SteamTrajVar temp(steam::Time((int64_t)edge.msg.t_b), temp_pose, temp_velocity);
       statevars.push_back(temp_statevar);
       traj_states.push_back(temp);
 
@@ -108,12 +107,10 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
       TransformEvaluator::Ptr rec_pose = steam::se3::compose(tf_gps_vehicle_, temp_pose);
       receiver_poses.emplace_back(rec_pose);                                      // T_k0
       enu_poses.emplace_back(steam::se3::compose(rec_pose, T_0g));   // T_kg = T_k0 * T_0g
-
-      v_idx++;
     }
 
     // add TDCP terms
-    for (uint k = 0; k < msgs_.size(); ++k) {
+    for (uint k = 0; k < edges_.size(); ++k) {
       TransformEvaluator::ConstPtr
           T_k1k = steam::se3::compose(receiver_poses[k + 1], steam::se3::inverse(receiver_poses[k]));
       PositionEvaluator::ConstPtr r_ba_ina(new PositionEvaluator(T_k1k));
@@ -122,7 +119,7 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
       steam::BaseNoiseModel<1>::Ptr tdcp_noise_model(new steam::StaticNoiseModel<1>(tdcp_cov_));
 
       // iterate through satellite pairs in msg and add TDCP costs
-      for (const auto &pair : msgs_[k].first.pairs) {
+      for (const auto &pair : edges_[k].msg.pairs) {
         Eigen::Vector3d r_1a_ing_ata{pair.r_1a_a.x, pair.r_1a_a.y, pair.r_1a_a.z};
         Eigen::Vector3d r_1a_ing_atb{pair.r_1a_b.x, pair.r_1a_b.y, pair.r_1a_b.z};
         Eigen::Vector3d r_2a_ing_ata{pair.r_2a_a.x, pair.r_2a_a.y, pair.r_2a_a.z};
@@ -230,9 +227,10 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
     printCosts(true);
 
     // update with optimized transforms
-    for (uint i = 0; i < msgs_.size(); ++i) {
-      msgs_[i].second = statevars[i + 1]->getValue() * statevars[i]->getValue().inverse();  // T_21 = T_20 * inv(T_10)
-      vels_[i] = traj_states.at(i).getVelocity()->getValue();     // this could be off by one (or more)
+    for (uint i = 0; i < edges_.size(); ++i) {
+      edges_[i].T_ba = statevars[i + 1]->getValue() * statevars[i]->getValue().inverse();  // T_21 = T_20 * inv(T_10)
+      edges_[i].v_a = traj_states.at(i).getVelocity()->getValue();
+      edges_[i].v_b = traj_states.at(i+1).getVelocity()->getValue();
     }
 
     // update our orientation estimate
@@ -242,11 +240,11 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
     }
 
     if (!fixed_rate_publish_) {
-      double t_n = (double) msgs_.back().first.t_b * 1e-9;
-      double t_n1 = (double) msgs_.back().first.t_a * 1e-9;
-      double t_0 = (double) msgs_.front().first.t_a * 1e-9;
+      double t_n = (double) edges_.back().msg.t_b * 1e-9;
+      double t_n1 = (double) edges_.back().msg.t_a * 1e-9;
+      double t_0 = (double) edges_.front().msg.t_a * 1e-9;
       lgmath::se3::Transformation T_ng = statevars.back()->getValue() * init_pose_;
-      const auto &T_n_n1 = msgs_.back().second;     // should be fine as is
+      const auto &T_n_n1 = edges_.back().T_ba;     // should be fine as is
       publishPoses(init_pose_, T_n_n1);
       saveToFile(t_0, 0, init_pose_, T_n_n1);
 
@@ -266,7 +264,7 @@ void CpoBackEnd::_timedCallback() {     // todo: not updated
   }
 
   // grab times and extrapolate poses
-  double t_last_msg = (double) msgs_.back().first.t_b * 1e-9;
+  double t_last_msg = (double) edges_.back().msg.t_b * 1e-9;
   double t_n = get_clock()->now().seconds();
   double t_n1 = t_n - 1.0;
 
@@ -421,11 +419,11 @@ void CpoBackEnd::initializeProblem() {
 
   if (!init_pose_estimated_) {
     // estimate initial T_0g from code solutions
-    Eigen::Vector3d r_k0_ing = toEigenVec3d(msgs_.back().first.enu_pos) - toEigenVec3d(msgs_.front().first.enu_pos);
+    Eigen::Vector3d r_k0_ing = toEigenVec3d(edges_.back().msg.enu_pos) - toEigenVec3d(edges_.front().msg.enu_pos);
     double theta = atan2(r_k0_ing.y(), r_k0_ing.x());
 
     Eigen::Matrix<double, 6, 1> init_pose_vec;
-    init_pose_vec << toEigenVec3d(msgs_.front().first.enu_pos), 0, 0, -1 * theta;
+    init_pose_vec << toEigenVec3d(edges_.front().msg.enu_pos), 0, 0, -1 * theta;
 
     init_pose_ = lgmath::se3::Transformation(init_pose_vec);
     init_pose_eig_ = init_pose_.matrix();     // probably not necessary
@@ -434,7 +432,7 @@ void CpoBackEnd::initializeProblem() {
       // save ENU origin to results file
       std::ofstream outstream;
       outstream.open(results_path_);
-      Eigen::Vector3d enu_origin = toEigenVec3d(msgs_.back().first.enu_origin);
+      Eigen::Vector3d enu_origin = toEigenVec3d(edges_.back().msg.enu_origin);
       outstream << std::setprecision(9) << enu_origin[0] << "," << enu_origin[1] << "," << enu_origin[2] << std::endl;
       outstream.close();
     } else {
@@ -449,8 +447,7 @@ void CpoBackEnd::resetEstimator() {
   for (int i = 0; i < 50; ++i){
     std::cout << "RESET ESTIMATOR " << i << std::endl;
   }
-  msgs_.clear();
-  vels_.clear();
+  edges_.clear();
   trajectory_ = nullptr;
   init_pose_estimated_ = false;
 }
@@ -470,12 +467,11 @@ void CpoBackEnd::printCosts(bool final) {
 
 void CpoBackEnd::addMsgToWindow(const cpo_interfaces::msg::TDCP::SharedPtr &msg) {
 
-  if (!msgs_.empty() && msg->t_a != msgs_.back().first.t_b) {
+  if (!edges_.empty() && msg->t_a != edges_.back().msg.t_b) {
     // times don't align, so we've likely missed a msg. To be safe we will clear it for now
     std::cout << "Warning: mismatched times. Clearing msgs_. Current t_a: " << msg->t_a << ". Previous t_b: "
-              << msgs_.back().first.t_b << std::endl;
-    std::deque<std::pair<cpo_interfaces::msg::TDCP, lgmath::se3::Transformation>>().swap(msgs_);
-    std::deque<Eigen::Matrix<double, 6, 1>>().swap(vels_);
+              << edges_.back().msg.t_b << std::endl;
+    std::deque<CpoEdge>().swap(edges_);
   }
 
   // add latest message
@@ -486,7 +482,7 @@ void CpoBackEnd::addMsgToWindow(const cpo_interfaces::msg::TDCP::SharedPtr &msg)
     new_T_estimate = T_b0 * T_a0.inverse();
   } else {
     double dist_since_last =
-        msgs_.empty() ? 0 : (toEigenVec3d(msg->enu_pos) - toEigenVec3d(msgs_.back().first.enu_pos)).norm();
+        edges_.empty() ? 0 : (toEigenVec3d(msg->enu_pos) - toEigenVec3d(edges_.back().msg.enu_pos)).norm();
 
     if (dist_since_last > 0) dist_since_last = 0.9 * (msg->t_b - msg->t_a) * 1e-9;    // hacky  todo: something else
 
@@ -494,22 +490,18 @@ void CpoBackEnd::addMsgToWindow(const cpo_interfaces::msg::TDCP::SharedPtr &msg)
     new_T_estimate = lgmath::se3::Transformation(Eigen::Matrix3d::Identity(), r_ba_est);
   }
 
-  msgs_.emplace_back(*msg, new_T_estimate);
-
   Eigen::Matrix<double, 6, 1> plausible_vel;       // temporary way to initialize velocity state variable
   plausible_vel << -0.9, 0.0, 0.0, 0.0, 0.0, 0.0;
-  vels_.emplace_back(plausible_vel);
+
+  edges_.emplace_back(CpoEdge{*msg, new_T_estimate, plausible_vel, plausible_vel});
 
   // if we have a full queue, discard the oldest msg
-  while (msgs_.size() > window_size_) {
+  while (edges_.size() > window_size_) {
 
-    init_pose_ = msgs_.front().second * init_pose_; // incrementing indices so need to update our T_0g estimate
-    init_pose_eig_ = msgs_.front().second.matrix() * init_pose_eig_; // todo: trying something here
+    init_pose_ = edges_.front().T_ba * init_pose_; // incrementing indices so need to update our T_0g estimate
+    init_pose_eig_ = edges_.front().T_ba.matrix() * init_pose_eig_; // todo: trying something here
 
-    msgs_.pop_front();
-    vels_.pop_front();
-
-    assert(msgs_.size() == vels_.size());
+    edges_.pop_front();
   }
 }
 
