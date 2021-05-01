@@ -469,9 +469,9 @@ void CpoBackEnd::addMsgToWindow(const cpo_interfaces::msg::TDCP::SharedPtr &msg)
 
   if (!edges_.empty() && msg->t_a != edges_.back().msg.t_b) {
     // times don't align, so we've likely missed a msg. To be safe we will clear it for now
-    std::cout << "Warning: mismatched times. Clearing msgs_. Current t_a: " << msg->t_a << ". Previous t_b: "
-              << edges_.back().msg.t_b << std::endl;
-    std::deque<CpoEdge>().swap(edges_);
+    std::cout << "Warning: mismatched times. Current t_a: " << msg->t_a << ". Previous t_b: "
+              << edges_.back().msg.t_b << " Resetting estimator." << std::endl;
+    resetEstimator();
   }
 
   // add latest message
