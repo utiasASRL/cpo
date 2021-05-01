@@ -136,6 +136,9 @@ class CpoBackEnd : public rclcpp::Node {
   /** \brief Store a window of TDCP messages. We use deque over queue to get access */
   std::deque<std::pair<cpo_interfaces::msg::TDCP, lgmath::se3::Transformation>> msgs_;
 
+  /** \brief velocities. todo: better data structure for this and above */
+  std::deque<Eigen::Matrix<double, 6, 1>> vels_;
+
   /** \brief Size of the optimization window in msgs */
   uint window_size_;
 
@@ -148,5 +151,8 @@ class CpoBackEnd : public rclcpp::Node {
   double traj_timeout_limit_;
 
   bool first_window_ = true;
+
+  // debug
+  double last_init_smoothing_cost_ = 0;
 
 };

@@ -141,6 +141,7 @@ def main():
                         (estimates[idx, 5] - estimates[0, 5]) - (row[1] - r_gt[0, 1]),  # error x    # from eigen, DEBUG
                         (estimates[idx, 6] - estimates[0, 6]) - (row[2] - r_gt[0, 2]),  # "" y
                         (estimates[idx, 7] - estimates[0, 7]) - (row[3] - r_gt[0, 3]),  # "" z
+                        estimates[idx, 43]    # smoothing cost      (11)
                         ])
     relative_errors = np.array(tmp)
 
@@ -170,6 +171,11 @@ def main():
     plt.ylabel('2D Position Error (m)')
     plt.ylim([0, 2])
     plt.tight_layout()
+
+    fig4 = plt.figure(4, figsize=[7, 2.5])
+    plt.plot(relative_errors[:, 0] - 1613400000, relative_errors[:, 11], c='C4')
+    plt.xlabel('Timestamp - 1613400000 (s)')
+    plt.ylabel('Initial Smoothing Cost')
 
     plt.show()
 
