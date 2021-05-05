@@ -91,10 +91,11 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
       enu_poses.emplace_back(steam::se3::compose(rec_pose_a, T_0g));
     }
 
-    lgmath::se3::Transformation T_k0_est;
+    lgmath::se3::Transformation prev_T_k0_est = lgmath::se3::Transformation();
     // loop over window to add states for other poses
     for (auto &edge : edges_) {
-      T_k0_est = edge.T_ba * T_k0_est;     // k has been incremented so update T_k0
+      lgmath::se3::Transformation T_k0_est(edge.T_ba * prev_T_k0_est);     // k has been incremented so update T_k0
+      T_k0_est.reproject(true);           // prevents rotation matrix from drifting away from being orthogonal
 
       TransformStateVar::Ptr temp_statevar(new TransformStateVar(T_k0_est));
       TransformStateEvaluator::Ptr temp_pose = TransformStateEvaluator::MakeShared(temp_statevar);
@@ -107,6 +108,8 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
       TransformEvaluator::Ptr rec_pose = steam::se3::compose(tf_gps_vehicle_, temp_pose);
       receiver_poses.emplace_back(rec_pose);                                      // T_k0
       enu_poses.emplace_back(steam::se3::compose(rec_pose, T_0g));   // T_kg = T_k0 * T_0g
+
+      prev_T_k0_est = T_k0_est;
     }
 
     // add TDCP terms
@@ -229,6 +232,7 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
     // update with optimized transforms
     for (uint i = 0; i < edges_.size(); ++i) {
       edges_[i].T_ba = statevars[i + 1]->getValue() * statevars[i]->getValue().inverse();  // T_21 = T_20 * inv(T_10)
+      edges_[i].T_ba.reproject(true);
       edges_[i].v_a = traj_states.at(i).getVelocity()->getValue();
       edges_[i].v_b = traj_states.at(i+1).getVelocity()->getValue();
     }
@@ -238,6 +242,8 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
       init_pose_ = T_0g_statevar->getValue();
       init_pose_eig_ = T_0g_statevar->getValue().matrix();
     }
+
+    init_pose_.reproject(true);
 
     if (!fixed_rate_publish_) {
       double t_n = (double) edges_.back().msg.t_b * 1e-9;
@@ -500,6 +506,8 @@ void CpoBackEnd::addMsgToWindow(const cpo_interfaces::msg::TDCP::SharedPtr &msg)
 
     init_pose_ = edges_.front().T_ba * init_pose_; // incrementing indices so need to update our T_0g estimate
     init_pose_eig_ = edges_.front().T_ba.matrix() * init_pose_eig_; // todo: trying something here
+
+    init_pose_.reproject(true);
 
     edges_.pop_front();
   }
