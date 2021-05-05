@@ -159,7 +159,7 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
     }
 
     steam::BaseNoiseModel<4>::Ptr nonholonomic_noise_model(new steam::StaticNoiseModel<4>(nonholonomic_cov_));
-    trajectory_ = std::make_shared<SteamTrajInterface>(SteamTrajInterface(smoothing_factor_information_, true));
+    trajectory_.reset(new steam::se3::SteamTrajInterface(smoothing_factor_information_, true));
 
     // loop through velocity state variables
     for (const auto &traj_state : traj_states) {
@@ -254,8 +254,8 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
       publishPoses(init_pose_, T_n_n1);
       saveToFile(t_0, 0, init_pose_, T_n_n1);
 
-      std::cout << "Last time was: " << std::setprecision(12) << t_n << std::setprecision(6) << std::endl;
-      std::cout << "Time zero was: " << std::setprecision(12) << t_0 << std::setprecision(6) << std::endl;
+      std::cout << "Last time was: " << std::setprecision(12) << t_n << std::setprecision(6);
+      std::cout << "    Time zero was: " << std::setprecision(12) << t_0 << std::setprecision(6) << std::endl;
     }
 
     init_pose_estimated_ = true;
