@@ -196,7 +196,6 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
 
     // print initial costs (for debugging/development)
     printCosts(false);
-    last_init_smoothing_cost_ = smoothing_cost_terms_->cost();    //debug
 
     // setup solver and optimize
     steam::DoglegGaussNewtonSolver::Params params;
@@ -240,19 +239,17 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
     // update our orientation estimate
     if (!T_0g_statevar->isLocked()) {
       init_pose_ = T_0g_statevar->getValue();
-      init_pose_eig_ = T_0g_statevar->getValue().matrix();
     }
 
     init_pose_.reproject(true);
 
     if (!fixed_rate_publish_) {
       double t_n = (double) edges_.back().msg.t_b * 1e-9;
-      double t_n1 = (double) edges_.back().msg.t_a * 1e-9;
       double t_0 = (double) edges_.front().msg.t_a * 1e-9;
       lgmath::se3::Transformation T_ng = statevars.back()->getValue() * init_pose_;
       const auto &T_n_n1 = edges_.back().T_ba;     // should be fine as is
-      publishPoses(init_pose_, T_n_n1);
-      saveToFile(t_0, 0, init_pose_, T_n_n1);
+      publishPoses(init_pose_, T_n_n1);   // todo: sort out this function
+      saveToFile(init_pose_, t_0);
 
       std::cout << "Last time was: " << std::setprecision(12) << t_n << std::setprecision(6);
       std::cout << "    Time zero was: " << std::setprecision(12) << t_0 << std::setprecision(6) << std::endl;
@@ -289,7 +286,7 @@ void CpoBackEnd::_timedCallback() {     // todo: not updated
 
   // publish
   publishPoses(T_ng, T_n_n1);       // todo: also change this to back of window (?)
-  saveToFile(t_n, t_n1, T_ng, T_n_n1);
+  saveToFile(T_ng, t_n);
 }
 
 void CpoBackEnd::publishPoses(const lgmath::se3::TransformationWithCovariance &T_0g,
@@ -301,47 +298,26 @@ void CpoBackEnd::publishPoses(const lgmath::se3::TransformationWithCovariance &T
   std::cout << "Message published! " << std::endl;
 }
 
-void CpoBackEnd::saveToFile(double t_n,
-                            double t_n1,
-                            const lgmath::se3::Transformation &T_0g,
-                            const lgmath::se3::Transformation &T_n_n1) const {
+void CpoBackEnd::saveToFile(const lgmath::se3::Transformation &T_kg,
+                            double t_k,
+                            double t_k1) const {
   // append latest estimate to file
   std::ofstream outstream;
   outstream.open(results_path_, std::ofstream::out | std::ofstream::app);
 
-  const Eigen::Vector3d r_0g_g = T_0g.r_ba_ina();     // note: could be sensitive to C_0g changes
-
-  // also get receiver position estimate for comparing to ground truth
-//  Eigen::Vector3d r_sg_g = (tf_gps_vehicle_->evaluate() * T_ng).r_ba_ina();   // lgmath bug so avoiding operator*()
-
-//  Eigen::Matrix4d T_sg = tf_gps_vehicle_->evaluate().matrix() * T_0g.matrix();
-  Eigen::Matrix4d T_sg = tf_gps_vehicle_->evaluate().matrix() * init_pose_.matrix();  // should be same as above but more explicit
-  Eigen::Matrix4d T_sg_eig = tf_gps_vehicle_->evaluate().matrix() * init_pose_eig_;   // todo: see if this helps
-  Eigen::Matrix4d T_gs = T_sg.inverse();
-  Eigen::Matrix4d T_gs_eig = T_sg_eig.inverse();
+  const Eigen::Vector3d r_kg_g = T_kg.r_ba_ina();     // vehicle position
+  Eigen::Vector3d r_sg_g = (tf_gps_vehicle_->evaluate() * T_kg).r_ba_ina();   // sensor (receiver) position
+  Eigen::Matrix4d T_sg = (tf_gps_vehicle_->evaluate() * T_kg).matrix();   // sensor pose
 
   // save times and global position for easy plotting
-  outstream << std::setprecision(12) << t_n << ", " << t_n1 << ", ";
-  outstream << T_gs(0,3) << ", " << T_gs(1,3) << ", " << T_gs(2,3) << ", ";
-  outstream << T_gs_eig(0,3) << ", " << T_gs_eig(1,3) << ", " << T_gs_eig(2,3) << ", ";     // this line is kicking columns but not using others yet so should be okay
-  outstream << r_0g_g[0] << ", " << r_0g_g[1] << ", " << r_0g_g[2] << ", ";
-
-  for (int i = 0; i < 2; ++i) {
-    if (fabs(T_gs(i,3) - T_gs_eig(i,3)) > 0.02){
-      std::cout << "Warning: lgmath jump likely occurred! i: " << i << " diff: " << T_gs(i,3) - T_gs_eig(i,3) << std::endl;
-    }
-  }
+  outstream << std::setprecision(12) << t_k << ", " << t_k1 << ", ";    // t_k-1 is last time -> alerts to data gaps
+  outstream << r_sg_g(0) << ", " << r_sg_g(1) << ", " << r_sg_g(2) << ", ";   // receiver position in ENU frame
+  outstream << r_kg_g(0) << ", " << r_kg_g(1) << ", " << r_kg_g(2) << ", ";   // vehicle position in ENU frame
 
   // save full transformations as well. Transpose needed to print in row-major order
-  auto temp = T_0g.matrix().transpose();
-  auto T_0g_flat = std::vector<double>(temp.data(), temp.data() + 16);
-  for (auto entry : T_0g_flat) outstream << entry << ",";
-
-  temp = T_n_n1.matrix().transpose();
-  auto T_n_n1_flat = std::vector<double>(temp.data(), temp.data() + 16);
-  for (auto entry : T_n_n1_flat) outstream << entry << ",";
-
-  outstream << last_init_smoothing_cost_ << ",";   // debug
+  auto temp = T_sg.matrix().transpose();
+  auto T_sg_flat = std::vector<double>(temp.data(), temp.data() + 16);
+  for (auto entry : T_sg_flat) outstream << entry << ",";
 
   outstream << std::endl;
   outstream.close();
@@ -432,7 +408,6 @@ void CpoBackEnd::initializeProblem() {
     init_pose_vec << toEigenVec3d(edges_.front().msg.enu_pos), 0, 0, -1 * theta;
 
     init_pose_ = lgmath::se3::Transformation(init_pose_vec);
-    init_pose_eig_ = init_pose_.matrix();     // probably not necessary
 
     if (first_window_) {
       // save ENU origin to results file
@@ -505,8 +480,6 @@ void CpoBackEnd::addMsgToWindow(const cpo_interfaces::msg::TDCP::SharedPtr &msg)
   while (edges_.size() > window_size_) {
 
     init_pose_ = edges_.front().T_ba * init_pose_; // incrementing indices so need to update our T_0g estimate
-    init_pose_eig_ = edges_.front().T_ba.matrix() * init_pose_eig_; // todo: trying something here
-
     init_pose_.reproject(true);
 
     edges_.pop_front();

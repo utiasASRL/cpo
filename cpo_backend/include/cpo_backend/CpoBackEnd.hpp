@@ -52,10 +52,9 @@ class CpoBackEnd : public rclcpp::Node {
   void addMsgToWindow(const cpo_interfaces::msg::TDCP::SharedPtr& msg);
 
   /** \brief Saves latest pose information to a CSV file for later analysis */
-  void saveToFile(double t_n,
-                  double t_n1,
-                  const lgmath::se3::Transformation &T_ng,
-                  const lgmath::se3::Transformation &T_n_n1) const;
+  void saveToFile(const lgmath::se3::Transformation &T_kg,
+                  double t_k,
+                  double t_k1 = 0) const;
 
   /** \brief Takes in Transforms and calls ROS publishers */
   void publishPoses(const lgmath::se3::TransformationWithCovariance &T_ng,
@@ -134,9 +133,6 @@ class CpoBackEnd : public rclcpp::Node {
   /** \brief Our estimate of T_0g, stored to initialize the next optimization problem */
   lgmath::se3::Transformation init_pose_;
 
-  /** \brief DEBUGGING Keeping track of T_0g separately to detect lgmath reproject issues */
-  Eigen::Matrix4d init_pose_eig_;
-
   /** \brief Keep track of whether we have T_0g estimate or need to get one from code solution */
   bool init_pose_estimated_ = false;
 
@@ -155,8 +151,5 @@ class CpoBackEnd : public rclcpp::Node {
   double traj_timeout_limit_;
 
   bool first_window_ = true;
-
-  // debug
-  double last_init_smoothing_cost_ = 0;
 
 };
