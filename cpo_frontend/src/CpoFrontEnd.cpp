@@ -20,7 +20,7 @@ CpoFrontEnd::CpoFrontEnd()
   from_serial = this->get_parameter("from_serial").as_bool();
   log_serial = this->get_parameter("log_serial").as_bool();
   std::string log_serial_filename = this->get_parameter("log_serial_filename").as_string();
-  log_serial_path = "/home/ben/CLionProjects/ros2-ws/src/cpo/data/" + log_serial_filename;
+  log_serial_path = "/home/ben/CLionProjects/ros2-ws/src/cpo_frontend/data/" + log_serial_filename;  // todo: better path
   rtcm_path = this->get_parameter("data_path").as_string();
 
   use_sim_time = this->get_parameter("use_sim_time").as_bool();

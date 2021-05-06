@@ -1,12 +1,12 @@
 # The tmux session name, has to be unique
 session_name: bag-replay-cpo-2
 
-# Can run a script before tmuxp starts building the session
-shell_command_before:
-  - "source ./../../install/setup.bash"     # assumes we are in tmuxp folder
-
 # The default start directory for the full session, ./ is this file's location
 start_directory: ./../../..
+
+# Can run a script before tmuxp starts building the session
+shell_command_before:
+  - "source ./install/setup.bash"
 
 # Add commands to bash history
 suppress_history: false

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.14)
-project(cpo)
+project(cpo_frontend)
 
 set(CMAKE_CXX_STANDARD 17)
 
@@ -39,10 +39,10 @@ install(
         INCLUDES DESTINATION include
 )
 
-add_executable(cpo src/main.cpp src/CpoFrontEnd.cpp src/SatelliteObs.cpp)
-ament_target_dependencies(cpo rclcpp cpo_interfaces)
-target_include_directories(cpo PUBLIC ${RTK_LIB_DIRECTORY}/src ${EIGEN3_INCLUDE_DIR} include)
-target_link_libraries(cpo serial rtklib)
+add_executable(cpo_frontend src/main.cpp src/CpoFrontEnd.cpp src/SatelliteObs.cpp)
+ament_target_dependencies(cpo_frontend rclcpp cpo_interfaces)
+target_include_directories(cpo_frontend PUBLIC ${RTK_LIB_DIRECTORY}/src ${EIGEN3_INCLUDE_DIR} include)
+target_link_libraries(cpo_frontend serial rtklib)
 
 add_executable(replay_RTCM src/replay_rtcm.cpp)
 target_link_libraries(replay_RTCM serial)
@@ -51,7 +51,7 @@ add_executable(clock_server src/clock_server.cpp)
 ament_target_dependencies(clock_server rclcpp)
 
 install(TARGETS
-        cpo
+        cpo_frontend
         replay_RTCM
         clock_server
         DESTINATION lib/${PROJECT_NAME})
