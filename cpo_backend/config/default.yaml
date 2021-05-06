@@ -4,8 +4,9 @@ cpo_back_end:
     window_size: 10
     lock_first_pose: true
     fixed_rate_publish: false
-    publish_frequency: 10.0
-    traj_timeout_limit: 5.0
+    publish_frequency: 4.0
+    publish_delay: 10.0              # seconds
+    traj_timeout_limit: 10.0
     r_veh_gps_inv: [-0.60, 0.00, -0.52]
 
     use_sim_time: true

@@ -28,6 +28,10 @@ CpoBackEnd::CpoBackEnd() : Node("cpo_back_end") {
     this->declare_parameter("publish_frequency", 5.0);
     double freq = this->get_parameter("publish_frequency").as_double();
     double period = 1000 / freq;
+
+    this->declare_parameter("publish_delay", 5.0);
+    publish_delay_ = this->get_parameter("publish_delay").as_double();
+
     publish_timer_ =
         this->create_wall_timer(std::chrono::milliseconds((long) period), std::bind(&CpoBackEnd::_timedCallback, this));
   } else {
@@ -260,7 +264,7 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
   }
 }
 
-void CpoBackEnd::_timedCallback() {     // todo: not updated
+void CpoBackEnd::_timedCallback() {
   if (first_window_ || !init_pose_estimated_ || trajectory_ == nullptr) {
     std::cout << "Not publishing because don't currently have a valid pose estimate." << std::endl;
     return;
@@ -268,25 +272,28 @@ void CpoBackEnd::_timedCallback() {     // todo: not updated
 
   // grab times and extrapolate poses
   double t_last_msg = (double) edges_.back().msg.t_b * 1e-9;
-  double t_n = get_clock()->now().seconds();
-  double t_n1 = t_n - 1.0;
+  double t_n = get_clock()->now().seconds();      // current time
+  double t_k = t_n - publish_delay_;              // time we want to save an estimate at
 
   if (t_n - t_last_msg > traj_timeout_limit_){
     std::cout << "Latest carrier phase measurement is " << t_n - t_last_msg << " seconds old. "
     << "Will not publish because trajectory is no longer valid." << std::endl;
     return;
   }
+  if (t_k > t_last_msg && publish_delay_ > 0) {
+    std::cout << "Choosing not to extrapolate. " << std::endl;    //todo: figure out proper behaviour later
+    return;
+  }
 
   lgmath::se3::TransformationWithCovariance T_0g = init_pose_;
-  lgmath::se3::TransformationWithCovariance T_n0 = trajectory_->getInterpPoseEval(t_n)->evaluate();
-  lgmath::se3::TransformationWithCovariance T_n10 = trajectory_->getInterpPoseEval(t_n1)->evaluate();
-
-  lgmath::se3::TransformationWithCovariance T_ng = T_n0 * T_0g;                // todo: get correct cov
-  lgmath::se3::TransformationWithCovariance T_n_n1 = T_n0 * T_n10.inverse();
+  T_0g.setZeroCovariance();
+  lgmath::se3::TransformationWithCovariance T_k0 = trajectory_->getInterpPoseEval(t_k)->evaluate();
+  T_k0.setZeroCovariance();
+  lgmath::se3::TransformationWithCovariance T_kg = T_k0 * T_0g;
 
   // publish
-  publishPoses(T_ng, T_n_n1);       // todo: also change this to back of window (?)
-  saveToFile(T_ng, t_n);
+  publishPoses(T_kg, T_kg);       // todo: sort this function out
+  saveToFile(T_kg, t_k);
 }
 
 void CpoBackEnd::publishPoses(const lgmath::se3::TransformationWithCovariance &T_0g,

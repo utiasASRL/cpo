@@ -78,6 +78,9 @@ class CpoBackEnd : public rclcpp::Node {
   /** \brief Whether to publish transform estimates at fixed rate (true) or after each msg received (false) */
   bool fixed_rate_publish_;
 
+  /** \brief Optionally delay output of pose in timed callback so not always extrapolating */
+  double publish_delay_;
+
   /** Timer to publish odometry estimates at a fixed rate */
   rclcpp::TimerBase::SharedPtr publish_timer_;
 
