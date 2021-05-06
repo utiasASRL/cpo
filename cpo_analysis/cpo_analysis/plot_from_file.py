@@ -84,11 +84,12 @@ def main():
     plt.rcParams["font.family"] = "serif"
 
     dataset = "feb15c"          # todo: this should update automatically
+    trim_start_rows = 10
 
     csv_dir = "/home/ben/CLionProjects/ros2-ws/src/cpo_analysis/data/estimates/"    # todo: non-hard-coded-path
     csv_file = "cpo.csv"
     enu_origin = np.genfromtxt(osp.join(csv_dir, csv_file), delimiter=',', max_rows=1)
-    estimates = np.genfromtxt(osp.join(csv_dir, csv_file), delimiter=',', skip_header=1)
+    estimates = np.genfromtxt(osp.join(csv_dir, csv_file), delimiter=',', skip_header=1+trim_start_rows)
 
     # get start and end time of SWF data to get correct section from Doppler, ground truth
     start_time = safe_float(estimates[0, 0])
