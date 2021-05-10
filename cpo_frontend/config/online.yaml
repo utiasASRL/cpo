@@ -1,0 +1,13 @@
+cpo_front_end:
+  ros__parameters:
+    from_serial: true
+    log_serial: true
+
+    data_path: "n/a"
+
+    port_path: "/dev/ttyUSB1"
+    baud: 57600
+
+    # Unix time data is from. Set to negative to use live time
+    approximate_time: -1       # now
+    use_sim_time: false

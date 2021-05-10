@@ -1,0 +1,33 @@
+cpo_back_end:
+  ros__parameters:
+    results_path: "/home/ben/CLionProjects/ros2-ws/src/cpo_analysis/data/estimates/cpo-online.csv" # todo: better name
+    window_size: 10
+    lock_first_pose: true
+    fixed_rate_publish: false
+    publish_frequency: 4.0
+    publish_delay: 10.0              # seconds
+    traj_timeout_limit: 10.0
+    r_veh_gps_inv: [-0.60, 0.00, -0.52]
+
+    use_sim_time: false
+
+    tdcp_cov: 0.01
+    non_holo_y: 0.01
+    non_holo_z: 0.01
+    non_holo_roll: 0.01
+    non_holo_pitch: 0.01
+    lin_acc_std_dev_x: 0.5
+    lin_acc_std_dev_y: 0.01
+    lin_acc_std_dev_z: 0.1
+    ang_acc_std_dev_x: 0.01
+    ang_acc_std_dev_y: 0.01
+    ang_acc_std_dev_z: 0.1
+    prior_cov_x: 0.001
+    prior_cov_y: 0.001
+    prior_cov_z: 0.001
+    prior_cov_ang1: 0.01
+    prior_cov_ang2: 0.01
+    prior_cov_ang3: 1.0
+
+    solver_verbose: true
+    solver_max_iterations: 50

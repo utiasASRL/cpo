@@ -1,5 +1,5 @@
 # The tmux session name, has to be unique
-session_name: bag-replay-cpo-2
+session_name: cpo
 
 # The default start directory for the full session, ./ is this file's location
 start_directory: ./../../..
@@ -16,7 +16,7 @@ windows:
   - window_name: cpo_main
     layout: main-horizontal
     panes:
-      - ros2 run cpo_backend cpo_backend --ros-args --params-file ./src/cpo_backend/config/offline.yaml
-      - ros2 bag play ~/CLionProjects/ros2-ws/bagfiles/feb15c --rate 1
+      - ros2 run cpo_backend cpo_backend --ros-args --params-file ./src/cpo_backend/config/online.yaml
+      - ros2 run cpo_frontend cpo_frontend --ros-args --params-file ./src/cpo_frontend/config/online.yaml -p log_serial_filename:=serial_$(date '+%F')_$(date '+%H')_$(date '+%M')_$(date '+%S').bin
       - ros2 run cpo_analysis listener
-      -
+      - ros2 topic list
