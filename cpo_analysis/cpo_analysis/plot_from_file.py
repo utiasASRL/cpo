@@ -43,7 +43,7 @@ def read_gpgga(gga_path, gps_day, proj_origin, start_time=0.0, end_time=49999999
                                                                                                proj_origin[1],
                                                                                                proj_origin[2]))
 
-    day_seconds = UNIX_GPS_OFFSET + LEAP_SECONDS + gps_day * 24 * 3600
+    day_seconds = UNIX_GPS_OFFSET + gps_day * 24 * 3600
 
     with open(gga_path, newline='') as resultfile:
         spamreader = csv.reader(resultfile, delimiter=',', quotechar='|')

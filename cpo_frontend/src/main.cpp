@@ -54,8 +54,8 @@ int main(int argc, char **argv) {
 
     // phase observation received
     if (rtcm_status == 1) {
-      if (node->use_sim_time && node->rtcm.obs.data->time.time < (node->get_clock()->now().seconds() - 5)){
-        std::cout << "Found old message. Continuing. " <<  (node->get_clock()->now().seconds() - node->rtcm.obs.data->time.time) << std::endl;
+      if (node->use_sim_time && node->rtcm.obs.data->time.time - LEAP_SECONDS < (node->get_clock()->now().seconds() - 5)){
+        std::cout << "Found old message. Continuing. " <<  (node->get_clock()->now().seconds() - node->rtcm.obs.data->time.time - LEAP_SECONDS) << std::endl;
         continue;     // todo: sorta hacky and not well tested
       }
 
@@ -65,7 +65,7 @@ int main(int argc, char **argv) {
         // check the observation is from a positioning satellite (as opposed to SBAS)
         if (obs.sat < MINPRNGPS || obs.sat > MAXPRNGPS) continue;        // todo: assuming GPS right now
 
-        double now_time = node->get_clock()->now().seconds();
+        double now_time = node->get_clock()->now().seconds();     // UTC time
         node->curr_sats->insert(std::make_pair(obs.sat, SatelliteObs(obs, now_time)));
 
         if (obs.LLI[0]) {
@@ -123,10 +123,12 @@ int main(int argc, char **argv) {
         const auto &sat_1a = node->prev_sats->at(sat_1_id);
         const auto &sat_1b = node->curr_sats->at(sat_1_id);
 
-        gtime_t prev_time = sat_1a.getMeasTimestamp();
-        gtime_t curr_time = sat_1b.getMeasTimestamp();
-        meas_msg.t_a = 1e9 * (prev_time.time + prev_time.sec);  // todo: may lose precision here but shouldn't matter
-        meas_msg.t_b = 1e9 * (curr_time.time + curr_time.sec);
+        gtime_t prev_time_gps = sat_1a.getMeasTimestamp();
+        gtime_t curr_time_gps = sat_1b.getMeasTimestamp();
+
+        // convert to UTC time for use by other packages
+        meas_msg.t_a = 1e9 * (prev_time_gps.time + prev_time_gps.sec - LEAP_SECONDS);  // todo: may lose precision here but shouldn't matter
+        meas_msg.t_b = 1e9 * (curr_time_gps.time + curr_time_gps.sec - LEAP_SECONDS);
 
         Eigen::Vector3d current_code = node->getCurrentCodePos();
         meas_msg.enu_pos.set__x(current_code.x());
@@ -141,8 +143,8 @@ int main(int argc, char **argv) {
         // calculate vectors to the 1st satellite
         Eigen::Vector3d r_1a_a;
         Eigen::Vector3d r_1a_b;
-        node->getSatelliteVector(sat_1_id, prev_time, prev_time, r_1a_a);    //todo: should check return value
-        node->getSatelliteVector(sat_1_id, curr_time, prev_time, r_1a_b);
+        node->getSatelliteVector(sat_1_id, prev_time_gps, prev_time_gps, r_1a_a);    //todo: should check return value
+        node->getSatelliteVector(sat_1_id, curr_time_gps, prev_time_gps, r_1a_b);
 
         for (unsigned int j = 1; j < matches.size(); ++j) {
           int sat_2_id = matches[j];
@@ -155,8 +157,8 @@ int main(int argc, char **argv) {
           // calculate vectors to 2nd satellite
           Eigen::Vector3d r_2a_a = Eigen::Vector3d::Zero();   // placeholder
           Eigen::Vector3d r_2a_b = Eigen::Vector3d::Zero();   // placeholder
-          node->getSatelliteVector(sat_2_id, prev_time, prev_time, r_2a_a);
-          node->getSatelliteVector(sat_2_id, curr_time, prev_time, r_2a_b);
+          node->getSatelliteVector(sat_2_id, prev_time_gps, prev_time_gps, r_2a_a);
+          node->getSatelliteVector(sat_2_id, curr_time_gps, prev_time_gps, r_2a_b);
 
           cpo_interfaces::msg::SatPair pair_msg;
           pair_msg.phi_measured = phi_dd;

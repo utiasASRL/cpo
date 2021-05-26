@@ -2,7 +2,7 @@
 
 #include <rtklib.h>
 
-#define LEAP_SECONDS 18
+#define LEAP_SECONDS 18   // todo: may want to use rtcm->nav.utc_gps[4] instead
 
 /** \brief Stores data related to one satellite observation at one timestamp
  * Reuses RTKLIB's obsd_t struct with some additional calculated values
@@ -21,11 +21,6 @@ class SatelliteObs {
   /** \brief Return timestamp of observation as measured by the GNSS receiver */
   gtime_t getMeasTimestamp() const {
     return observation_.time;
-  }
-
-  double convertGpsToUnix(gtime_t time_in) {
-    double gps_time = time_in.time + time_in.sec;
-    return gps_time - LEAP_SECONDS;
   }
 
   /** \brief Return timestamp of when we received the observation */
