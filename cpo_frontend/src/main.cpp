@@ -120,11 +120,23 @@ int main(int argc, char **argv) {
         // calculate necessary values for each pair to fill in SatPair msg
         // we'll use the 1st match as the 1st satellite for all pairs and the j^th match for the 2nd
         int sat_1_id = matches[0];
-        const auto &sat_1a = node->prev_sats->at(sat_1_id);
-        const auto &sat_1b = node->curr_sats->at(sat_1_id);
+        auto &sat_1a = node->prev_sats->at(sat_1_id);
+        auto &sat_1b = node->curr_sats->at(sat_1_id);
 
         gtime_t prev_time_gps = sat_1a.getMeasTimestamp();
         gtime_t curr_time_gps = sat_1b.getMeasTimestamp();
+
+        if (node->enable_tropospheric_correction) {
+          // calculate atmospheric corrections here to ensure we have an ephemeris
+          double *sat_pos_vel_a;
+          double *sat_pos_vel_b;
+          node->getSatellitePosition(sat_1_id, prev_time_gps, prev_time_gps, sat_pos_vel_a);
+          node->getSatellitePosition(sat_1_id, curr_time_gps, curr_time_gps, sat_pos_vel_b);
+
+          // only rough receiver position needed so we reuse init_solution
+          sat_1a.estimateTroposphericDelay(sat_pos_vel_a, init_solution.rr);
+          sat_1b.estimateTroposphericDelay(sat_pos_vel_b, init_solution.rr);
+        }
 
         // convert to UTC time for use by other packages
         meas_msg.t_a = 1e9 * (prev_time_gps.time + prev_time_gps.sec - LEAP_SECONDS);  // todo: may lose precision here but shouldn't matter
@@ -148,8 +160,17 @@ int main(int argc, char **argv) {
 
         for (unsigned int j = 1; j < matches.size(); ++j) {
           int sat_2_id = matches[j];
-          const auto &sat_2a = node->prev_sats->at(sat_2_id);
-          const auto &sat_2b = node->curr_sats->at(sat_2_id);
+          auto &sat_2a = node->prev_sats->at(sat_2_id);
+          auto &sat_2b = node->curr_sats->at(sat_2_id);
+
+          if (node->enable_tropospheric_correction) {
+            double *sat_pos_vel_a;
+            double *sat_pos_vel_b;
+            node->getSatellitePosition(sat_2_id, prev_time_gps, prev_time_gps, sat_pos_vel_a);
+            node->getSatellitePosition(sat_2_id, curr_time_gps, curr_time_gps, sat_pos_vel_b);
+            sat_2a.estimateTroposphericDelay(sat_pos_vel_a, init_solution.rr);
+            sat_2b.estimateTroposphericDelay(sat_pos_vel_b, init_solution.rr);
+          }
 
           double phi_dd = (sat_2b.getAdjPhaseRange() - sat_2a.getAdjPhaseRange())
               - (sat_1b.getAdjPhaseRange() - sat_1a.getAdjPhaseRange());

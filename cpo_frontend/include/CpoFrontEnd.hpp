@@ -65,6 +65,12 @@ class CpoFrontEnd : public rclcpp::Node {
     return prev_code_solution_;
   }
 
+  /** \brief Calculate satellite position, velocity if ephemeris is available */
+  int getSatellitePosition(int sat_no,
+                           gtime_t &time,
+                           gtime_t &eph_time,
+                           double *&rs) const;
+
   /** \brief The serial port that listens for GNSS measurements */
   std::shared_ptr<serial::Serial> serial_port;
 
@@ -103,6 +109,9 @@ class CpoFrontEnd : public rclcpp::Node {
 
   /** \brief  */
   bool use_sim_time;
+
+  /** \brief Whether to attempt to estimate and correct for tropospheric delay to carrier phase signal */
+  bool enable_tropospheric_correction;
 
  private:
 

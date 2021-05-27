@@ -12,3 +12,5 @@ cpo_front_end:
     approximate_time: 1613400000       # Feb.15/21
 #    approximate_time: -1       # now
     use_sim_time: true
+
+    enable_tropospheric_correction: true

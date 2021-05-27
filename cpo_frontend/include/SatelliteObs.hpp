@@ -28,6 +28,9 @@ class SatelliteObs {
     return in_stamp_;
   }
 
+  /** \brief Sets tropospheric_delay_ based on receiver & satellite positions */
+  void estimateTroposphericDelay(const double *satellite_pos_vel, const double *receiver_pos);
+
  private:
 
   /** \brief Unix timestamp of when we received the phase measurement. Allows us to use consistent ROS time. */
@@ -36,10 +39,12 @@ class SatelliteObs {
   /** \brief Struct containing phase, pseudorange measurements among other things */
   obsd_t observation_;
 
-  /** \brief The estimated tropospheric delay affecting the phase measurement [m] */
-  double tropospheric_delay_;
+  /** \brief The estimated tropospheric delay affecting the phase measurement [m]
+   * Defaults to zero. If enabled will get set later. */
+  double tropospheric_delay_ = 0;
 
-  /** \brief The estimated ionospheric advance affecting the phase measurement [m] */
-  double ionospheric_advance_;
+  /** \brief The estimated ionospheric advance affecting the phase measurement [m]
+   * Defaults to zero. Currently not supported. */
+  double ionospheric_advance_ = 0;
 
 };

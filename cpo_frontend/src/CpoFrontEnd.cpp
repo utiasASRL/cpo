@@ -14,6 +14,7 @@ CpoFrontEnd::CpoFrontEnd()
   this->declare_parameter("log_serial_filename", "log.bin");
   this->declare_parameter("data_path", "/home/ben/CLionProjects/gpso/data/rtcm3/feb15c.BIN");
   this->declare_parameter("approximate_time", -1);
+  this->declare_parameter("enable_tropospheric_correction", true);
 
   port_path_ = this->get_parameter("port_path").as_string();
   baud_ = this->get_parameter("baud").as_int();
@@ -24,6 +25,7 @@ CpoFrontEnd::CpoFrontEnd()
   rtcm_path = this->get_parameter("data_path").as_string();
 
   use_sim_time = this->get_parameter("use_sim_time").as_bool();
+  enable_tropospheric_correction = this->get_parameter("enable_tropospheric_correction").as_bool();
 
   if (!from_serial && !fs::exists(rtcm_path)) {
     throw std::runtime_error("RTCM data file not found.");
@@ -69,21 +71,44 @@ CpoFrontEnd::CpoFrontEnd()
   curr_sats = std::make_shared<std::unordered_map<uint8_t, SatelliteObs>>();
 }
 
-int CpoFrontEnd::getSatelliteVector(int sat_no, gtime_t time, gtime_t eph_time, Eigen::Vector3d &r_sa_g) {
-  double *rs;                 // satellite positions and velocities at previous time
+int CpoFrontEnd::getSatelliteVector(int sat_no,
+                                    gtime_t time,
+                                    gtime_t eph_time,
+                                    Eigen::Vector3d &r_sa_g) {
+  double *rs;
+  int pos_status = getSatellitePosition(sat_no, time, eph_time, rs);
+
+  if (pos_status) {
+    Eigen::Vector3d r_1c_c{rs[0], rs[1], rs[2]};
+    Eigen::Vector3d r_1g_g = C_enu_ecef_ * (r_1c_c - enu_origin_);
+    r_sa_g = r_1g_g - prev_code_solution_;
+  }
+
+  return pos_status;
+}
+
+int CpoFrontEnd::getSatellitePosition(int sat_no,
+                                      gtime_t &time,
+                                      gtime_t &eph_time,
+                                      double *&rs) const {
+
   double *dts;                // satellite clocks
   double *var;                // variances on positions and clock errors
   int svh[MAXOBS];            // satellite health flags
   rs = mat(6, 1);
   dts = mat(2, 1);
   var = mat(1, 1);
-  int pos_status = satpos(time, eph_time, sat_no, EPHOPT_BRDC, &rtcm.nav, rs, dts, var, svh);
+  int pos_status = satpos(time,
+                          eph_time,
+                          sat_no,
+                          EPHOPT_BRDC,
+                          &rtcm.nav,
+                          rs,
+                          dts,
+                          var,
+                          svh); // satellite positions, velocities at time
   if (!pos_status)
-    std::cout << "WARNING: Positioning error for satellite " << sat_no << std::endl;
-
-  Eigen::Vector3d r_1c_c{rs[0], rs[1], rs[2]};
-  Eigen::Vector3d r_1g_g = C_enu_ecef_ * (r_1c_c - enu_origin_);
-  r_sa_g = r_1g_g - prev_code_solution_;
+    std::cout << "WARNING: Positioning error for sat:" << sat_no << std::endl;
 
   return pos_status;
 }
