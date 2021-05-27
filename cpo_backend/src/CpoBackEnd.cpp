@@ -5,6 +5,8 @@
 #include <fstream>
 #include <chrono>
 
+using Transformation = lgmath::se3::Transformation;
+using TransformationWithCovariance = lgmath::se3::TransformationWithCovariance;
 using TransformStateVar = steam::se3::TransformStateVar;
 using TransformStateEvaluator = steam::se3::TransformStateEvaluator;
 using TransformEvaluator = steam::se3::TransformEvaluator;
@@ -15,11 +17,20 @@ using PositionEvaluator = steam::se3::PositionEvaluator;
 
 CpoBackEnd::CpoBackEnd() : Node("cpo_back_end") {
 
-  subscription_ = this->create_subscription<cpo_interfaces::msg::TDCP>(
-      "tdcp", 10, std::bind(&CpoBackEnd::_tdcpCallback, this, std::placeholders::_1));
+  subscription_ = this->create_subscription<cpo_interfaces::msg::TDCP>("tdcp",
+                                                                       10,
+                                                                       std::bind(
+                                                                           &CpoBackEnd::_tdcpCallback,
+                                                                           this,
+                                                                           std::placeholders::_1));
 
-  vehicle_publisher_ = this->create_publisher<geometry_msgs::msg::PoseWithCovariance>("cpo_odometry", 10);
-  enu_publisher_ = this->create_publisher<geometry_msgs::msg::PoseWithCovariance>("cpo_enu", 10);
+  vehicle_publisher_ =
+      this->create_publisher<geometry_msgs::msg::PoseWithCovariance>(
+          "cpo_odometry",
+          10);
+  enu_publisher_ =
+      this->create_publisher<geometry_msgs::msg::PoseWithCovariance>("cpo_enu",
+                                                                     10);
 
   this->declare_parameter("fixed_rate_publish", true);
   fixed_rate_publish_ = this->get_parameter("fixed_rate_publish").as_bool();
@@ -33,22 +44,25 @@ CpoBackEnd::CpoBackEnd() : Node("cpo_back_end") {
     publish_delay_ = this->get_parameter("publish_delay").as_double();
 
     publish_timer_ =
-        this->create_wall_timer(std::chrono::milliseconds((long) period), std::bind(&CpoBackEnd::_timedCallback, this));
+        this->create_wall_timer(std::chrono::milliseconds((long) period),
+                                std::bind(&CpoBackEnd::_timedCallback, this));
   } else {
     publish_timer_ = nullptr;
   }
 
   // set up receiver-vehicle transform
-  this->declare_parameter("r_veh_gps_inv", std::vector<double>{-0.60, 0.00, -0.52});
+  this->declare_parameter("r_veh_gps_inv",
+                          std::vector<double>{-0.60, 0.00, -0.52});
   auto r = this->get_parameter("r_veh_gps_inv").as_double_array();
 
   Eigen::Matrix4d T_gps_vehicle_eigen = Eigen::Matrix4d::Identity();
   T_gps_vehicle_eigen(0, 3) = r[0];
   T_gps_vehicle_eigen(1, 3) = r[1];
   T_gps_vehicle_eigen(2, 3) = r[2];
-  auto T_gps_vehicle = lgmath::se3::TransformationWithCovariance(T_gps_vehicle_eigen);
+  auto T_gps_vehicle = TransformationWithCovariance(T_gps_vehicle_eigen);
   T_gps_vehicle.setZeroCovariance();
-  tf_gps_vehicle_ = steam::se3::FixedTransformEvaluator::MakeShared(T_gps_vehicle);
+  tf_gps_vehicle_ =
+      steam::se3::FixedTransformEvaluator::MakeShared(T_gps_vehicle);
 
   getParams();
 }
@@ -79,70 +93,92 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
 
     // set up T_0g state
     TransformStateVar::Ptr T_0g_statevar(new TransformStateVar(init_pose_));
-    TransformEvaluator::ConstPtr T_0g = TransformStateEvaluator::MakeShared(T_0g_statevar);
+    TransformEvaluator::ConstPtr
+        T_0g = TransformStateEvaluator::MakeShared(T_0g_statevar);
 
-    { // first pose in window gets locked
-      TransformStateVar::Ptr temp_statevar_a(new TransformStateVar(lgmath::se3::Transformation()));
-      TransformStateEvaluator::Ptr temp_pose_a = TransformStateEvaluator::MakeShared(temp_statevar_a);
-      VectorSpaceStateVar::Ptr temp_velocity_a = VectorSpaceStateVar::Ptr(new VectorSpaceStateVar(edges_.front().v_a));    // technically off by one (?) - handle better later
-      temp_statevar_a->setLock(true);   // lock the first pose (but not the first velocity)
-      SteamTrajVar temp_a(steam::Time((int64_t)edges_.front().msg.t_a), temp_pose_a, temp_velocity_a);
+    { // first pose in window gets locked (but not the first velocity)
+      TransformStateVar::Ptr
+          temp_statevar_a(new TransformStateVar(Transformation()));
+      TransformStateEvaluator::Ptr
+          temp_pose_a = TransformStateEvaluator::MakeShared(temp_statevar_a);
+      // todo: below technically off by one (?) - handle better later
+      VectorSpaceStateVar::Ptr temp_velocity_a =
+          VectorSpaceStateVar::Ptr(new VectorSpaceStateVar(edges_.front().v_a));
+      temp_statevar_a->setLock(true);
+      SteamTrajVar temp_a(steam::Time((int64_t)
+      edges_.front().msg.t_a), temp_pose_a, temp_velocity_a);
       statevars.push_back(temp_statevar_a);
       traj_states.push_back(temp_a);
 
-      TransformEvaluator::Ptr rec_pose_a = steam::se3::compose(tf_gps_vehicle_, temp_pose_a);
+      TransformEvaluator::Ptr
+          rec_pose_a = steam::se3::compose(tf_gps_vehicle_, temp_pose_a);
       receiver_poses.emplace_back(rec_pose_a);
       enu_poses.emplace_back(steam::se3::compose(rec_pose_a, T_0g));
     }
 
-    lgmath::se3::Transformation prev_T_k0_est = lgmath::se3::Transformation();
+    Transformation prev_T_k0_est = Transformation();
     // loop over window to add states for other poses
     for (auto &edge : edges_) {
-      lgmath::se3::Transformation T_k0_est(edge.T_ba * prev_T_k0_est);     // k has been incremented so update T_k0
-      T_k0_est.reproject(true);           // prevents rotation matrix from drifting away from being orthogonal
+      // k has been incremented so update T_k0
+      Transformation T_k0_est(edge.T_ba * prev_T_k0_est);
+      // prevents rotation matrix from drifting away from being orthogonal
+      T_k0_est.reproject(true);
 
       TransformStateVar::Ptr temp_statevar(new TransformStateVar(T_k0_est));
-      TransformStateEvaluator::Ptr temp_pose = TransformStateEvaluator::MakeShared(temp_statevar);
-      VectorSpaceStateVar::Ptr temp_velocity = VectorSpaceStateVar::Ptr(new VectorSpaceStateVar(edge.v_b));
-      SteamTrajVar temp(steam::Time((int64_t)edge.msg.t_b), temp_pose, temp_velocity);
+      TransformStateEvaluator::Ptr
+          temp_pose = TransformStateEvaluator::MakeShared(temp_statevar);
+      VectorSpaceStateVar::Ptr temp_velocity =
+          VectorSpaceStateVar::Ptr(new VectorSpaceStateVar(edge.v_b));
+      SteamTrajVar temp(steam::Time((int64_t)
+      edge.msg.t_b), temp_pose, temp_velocity);
       statevars.push_back(temp_statevar);
       traj_states.push_back(temp);
 
       // T_s0 = T_sv * T_v0
-      TransformEvaluator::Ptr rec_pose = steam::se3::compose(tf_gps_vehicle_, temp_pose);
-      receiver_poses.emplace_back(rec_pose);                                      // T_k0
-      enu_poses.emplace_back(steam::se3::compose(rec_pose, T_0g));   // T_kg = T_k0 * T_0g
+      TransformEvaluator::Ptr
+          rec_pose = steam::se3::compose(tf_gps_vehicle_, temp_pose);
+      receiver_poses.emplace_back(rec_pose); // T_k0
+      // T_kg = T_k0 * T_0g
+      enu_poses.emplace_back(steam::se3::compose(rec_pose, T_0g));
 
       prev_T_k0_est = T_k0_est;
     }
 
     // add TDCP terms
     for (uint k = 0; k < edges_.size(); ++k) {
-      TransformEvaluator::ConstPtr
-          T_k1k = steam::se3::compose(receiver_poses[k + 1], steam::se3::inverse(receiver_poses[k]));
+      TransformEvaluator::ConstPtr T_k1k = steam::se3::compose(
+          receiver_poses[k + 1],
+          steam::se3::inverse(receiver_poses[k]));
       PositionEvaluator::ConstPtr r_ba_ina(new PositionEvaluator(T_k1k));
 
       // using constant covariance here for now
-      steam::BaseNoiseModel<1>::Ptr tdcp_noise_model(new steam::StaticNoiseModel<1>(tdcp_cov_));
+      steam::BaseNoiseModel<1>::Ptr
+          tdcp_noise_model(new steam::StaticNoiseModel<1>(tdcp_cov_));
 
       // iterate through satellite pairs in msg and add TDCP costs
       for (const auto &pair : edges_[k].msg.pairs) {
-        Eigen::Vector3d r_1a_ing_ata{pair.r_1a_a.x, pair.r_1a_a.y, pair.r_1a_a.z};
-        Eigen::Vector3d r_1a_ing_atb{pair.r_1a_b.x, pair.r_1a_b.y, pair.r_1a_b.z};
-        Eigen::Vector3d r_2a_ing_ata{pair.r_2a_a.x, pair.r_2a_a.y, pair.r_2a_a.z};
-        Eigen::Vector3d r_2a_ing_atb{pair.r_2a_b.x, pair.r_2a_b.y, pair.r_2a_b.z};
+        Eigen::Vector3d
+            r_1a_ing_ata{pair.r_1a_a.x, pair.r_1a_a.y, pair.r_1a_a.z};
+        Eigen::Vector3d
+            r_1a_ing_atb{pair.r_1a_b.x, pair.r_1a_b.y, pair.r_1a_b.z};
+        Eigen::Vector3d
+            r_2a_ing_ata{pair.r_2a_a.x, pair.r_2a_a.y, pair.r_2a_a.z};
+        Eigen::Vector3d
+            r_2a_ing_atb{pair.r_2a_b.x, pair.r_2a_b.y, pair.r_2a_b.z};
 
-        steam::TdcpErrorEval::Ptr tdcp_error(new steam::TdcpErrorEval(pair.phi_measured,
-                                                                      r_ba_ina,
-                                                                      enu_poses[k],   // T_kg
-                                                                      r_1a_ing_ata,
-                                                                      r_1a_ing_atb,
-                                                                      r_2a_ing_ata,
-                                                                      r_2a_ing_atb));
-        auto tdcp_factor = steam::WeightedLeastSqCostTerm<1, 6>::Ptr(new steam::WeightedLeastSqCostTerm<1, 6>(
-            tdcp_error,
-            tdcp_noise_model,
-            tdcp_loss_function_));
+        steam::TdcpErrorEval::Ptr tdcp_error(new steam::TdcpErrorEval(
+            pair.phi_measured,
+            r_ba_ina,
+            enu_poses[k],   // T_kg
+            r_1a_ing_ata,
+            r_1a_ing_atb,
+            r_2a_ing_ata,
+            r_2a_ing_atb));
+        auto tdcp_factor = steam::WeightedLeastSqCostTerm<1, 6>::Ptr(
+            new steam::WeightedLeastSqCostTerm<1, 6>(
+                tdcp_error,
+                tdcp_noise_model,
+                tdcp_loss_function_));
         tdcp_cost_terms_->add(tdcp_factor);
       }
     }
@@ -154,32 +190,39 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
       // add prior on initial pose to deal with roll uncertainty and constrain r^0g_g to zero
       steam::BaseNoiseModel<6>::Ptr
           sharedNoiseModel(new steam::StaticNoiseModel<6>(pose_prior_cov_));
-      steam::TransformErrorEval::Ptr prior_error_func(new steam::TransformErrorEval(init_pose_, T_0g));
-      auto pose_prior_factor_ = steam::WeightedLeastSqCostTerm<6, 6>::Ptr(new steam::WeightedLeastSqCostTerm<6, 6>(
-          prior_error_func,
-          sharedNoiseModel,
-          pp_loss_function_));
+      steam::TransformErrorEval::Ptr prior_error_func(
+          new steam::TransformErrorEval(init_pose_, T_0g));
+      auto pose_prior_factor_ = steam::WeightedLeastSqCostTerm<6, 6>::Ptr(
+          new steam::WeightedLeastSqCostTerm<6, 6>(
+              prior_error_func,
+              sharedNoiseModel,
+              pp_loss_function_));
       pose_prior_cost_->add(pose_prior_factor_);
     }
 
-    steam::BaseNoiseModel<4>::Ptr nonholonomic_noise_model(new steam::StaticNoiseModel<4>(nonholonomic_cov_));
-    trajectory_.reset(new steam::se3::SteamTrajInterface(smoothing_factor_information_, true));
+    steam::BaseNoiseModel<4>::Ptr nonholonomic_noise_model
+        (new steam::StaticNoiseModel<4>(nonholonomic_cov_));
+    trajectory_.reset(new SteamTrajInterface(smoothing_factor_information_,
+                                             true));
 
     // loop through velocity state variables
     for (const auto &traj_state : traj_states) {
       if (!traj_state.getVelocity()->isLocked()) {
         // add nonholonomic costs
-        steam::UnicycleErrorEval::Ptr non_holo_error_func(new steam::UnicycleErrorEval(traj_state.getVelocity()));
-        auto non_holonomic_factor = steam::WeightedLeastSqCostTerm<4, 6>::Ptr(new steam::WeightedLeastSqCostTerm<4, 6>(
-            non_holo_error_func,
-            nonholonomic_noise_model,
-            nonholonomic_loss_function_));
+        steam::UnicycleErrorEval::Ptr non_holo_error_func(
+            new steam::UnicycleErrorEval(traj_state.getVelocity()));
+        auto non_holonomic_factor = steam::WeightedLeastSqCostTerm<4, 6>::Ptr(
+            new steam::WeightedLeastSqCostTerm<4, 6>(
+                non_holo_error_func,
+                nonholonomic_noise_model,
+                nonholonomic_loss_function_));
         nonholonomic_cost_terms_->add(non_holonomic_factor);
 
         // add smoothing costs
         steam::Time temp_time = traj_state.getTime();
         const TransformEvaluator::Ptr &temp_pose = traj_state.getPose();
-        const steam::VectorSpaceStateVar::Ptr &temp_velocity = traj_state.getVelocity();
+        const steam::VectorSpaceStateVar::Ptr
+            &temp_velocity = traj_state.getVelocity();
         trajectory_->add(temp_time, temp_pose, temp_velocity);
 
         // also add velocity state to problem
@@ -214,17 +257,22 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
       // did any successful steps occur?
       if (solver_->getCurrIteration() <= 1) {
         // no: something is very wrong; we should start over. Should not occur frequently
-        std::cout << "Steam has failed to optimise the problem! This is an ERROR." << std::endl;
+        std::cout
+            << "Steam has failed to optimize the problem! This is an ERROR."
+            << std::endl;
         resetEstimator();
         return;
       } else {
         // yes: just a marginal problem, let's use what we got
-        std::cout << "Steam has failed due to an unsuccessful step. This should be OK if it happens infrequently."
-                  << std::endl;
+        std::cout
+            << "Steam has failed due to an unsuccessful step. This should be OK if it happens infrequently."
+            << std::endl;
       }
     } catch (steam::decomp_failure &e) {
       // Should not occur frequently
-      std::cout << "Steam has encountered an LL^T decomposition error while optimizing! This is an ERROR." << std::endl;
+      std::cout
+          << "Steam has encountered an LL^T decomposition error while optimizing! This is an ERROR."
+          << std::endl;
       resetEstimator();
       return;
     }
@@ -234,10 +282,11 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
 
     // update with optimized transforms
     for (uint i = 0; i < edges_.size(); ++i) {
-      edges_[i].T_ba = statevars[i + 1]->getValue() * statevars[i]->getValue().inverse();  // T_21 = T_20 * inv(T_10)
+      edges_[i].T_ba = statevars[i + 1]->getValue()
+          * statevars[i]->getValue().inverse();  // T_21 = T_20 * inv(T_10)
       edges_[i].T_ba.reproject(true);
       edges_[i].v_a = traj_states.at(i).getVelocity()->getValue();
-      edges_[i].v_b = traj_states.at(i+1).getVelocity()->getValue();
+      edges_[i].v_b = traj_states.at(i + 1).getVelocity()->getValue();
     }
 
     // update our orientation estimate
@@ -250,13 +299,14 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
     if (!fixed_rate_publish_) {
       double t_n = (double) edges_.back().msg.t_b * 1e-9;
       double t_0 = (double) edges_.front().msg.t_a * 1e-9;
-      lgmath::se3::Transformation T_ng = statevars.back()->getValue() * init_pose_;
-      const auto &T_n_n1 = edges_.back().T_ba;     // should be fine as is
-      publishPoses(init_pose_, T_n_n1);   // todo: sort out this function
+      Transformation T_ng = statevars.back()->getValue() * init_pose_;
+      const auto &T_n_n1 = edges_.back().T_ba;
+      publishPoses(init_pose_, T_n_n1); // todo: sort out function
       saveToFile(init_pose_, t_0);
 
-      std::cout << "Last time was: " << std::setprecision(12) << t_n << std::setprecision(6);
-      std::cout << "    Time zero was: " << std::setprecision(12) << t_0 << std::setprecision(6) << std::endl;
+      std::cout << "Last time was: " << std::setprecision(12) << t_n;
+      std::cout << "    Time zero was: " << t_0 << std::setprecision(6)
+                << std::endl;
     }
 
     init_pose_estimated_ = true;
@@ -266,38 +316,44 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
 
 void CpoBackEnd::_timedCallback() {
   if (first_window_ || !init_pose_estimated_ || trajectory_ == nullptr) {
-    std::cout << "Not publishing because don't currently have a valid pose estimate." << std::endl;
+    std::cout
+        << "Not publishing because don't currently have a valid pose estimate."
+        << std::endl;
     return;
   }
 
   // grab times and extrapolate poses
   double t_last_msg = (double) edges_.back().msg.t_b * 1e-9;
   double t_n = get_clock()->now().seconds();      // current time
-  double t_k = t_n - publish_delay_;              // time we want to save an estimate at
+  double t_k = t_n - publish_delay_;              // time to save an estimate at
 
-  if (t_n - t_last_msg > traj_timeout_limit_){
-    std::cout << "Latest carrier phase measurement is " << t_n - t_last_msg << " seconds old. "
-    << "Will not publish because trajectory is no longer valid." << std::endl;
+  if (t_n - t_last_msg > traj_timeout_limit_) {
+    std::cout << "Latest carrier phase measurement is " << t_n - t_last_msg
+              << " seconds old. "
+              << "Will not publish because trajectory is no longer valid."
+              << std::endl;
     return;
   }
   if (t_k > t_last_msg && publish_delay_ > 0) {
-    std::cout << "Choosing not to extrapolate. " << std::endl;    //todo: figure out proper behaviour later
+    //todo: figure out proper behaviour later
+    std::cout << "Choosing not to extrapolate. " << std::endl;
     return;
   }
 
-  lgmath::se3::TransformationWithCovariance T_0g = init_pose_;
+  TransformationWithCovariance T_0g = init_pose_;
   T_0g.setZeroCovariance();
-  lgmath::se3::TransformationWithCovariance T_k0 = trajectory_->getInterpPoseEval(t_k)->evaluate();
+  TransformationWithCovariance
+      T_k0 = trajectory_->getInterpPoseEval(t_k)->evaluate();
   T_k0.setZeroCovariance();
-  lgmath::se3::TransformationWithCovariance T_kg = T_k0 * T_0g;
+  TransformationWithCovariance T_kg = T_k0 * T_0g;
 
   // publish
   publishPoses(T_kg, T_kg);       // todo: sort this function out
   saveToFile(T_kg, t_k);
 }
 
-void CpoBackEnd::publishPoses(const lgmath::se3::TransformationWithCovariance &T_0g,
-                              const lgmath::se3::TransformationWithCovariance &T_n_n1) {
+void CpoBackEnd::publishPoses(const TransformationWithCovariance &T_0g,
+                              const TransformationWithCovariance &T_n_n1) {
   geometry_msgs::msg::PoseWithCovariance relative_pose_msg = toPoseMsg(T_n_n1);
   vehicle_publisher_->publish(relative_pose_msg);
   geometry_msgs::msg::PoseWithCovariance enu_pose_msg = toPoseMsg(T_0g);
@@ -305,7 +361,7 @@ void CpoBackEnd::publishPoses(const lgmath::se3::TransformationWithCovariance &T
   std::cout << "Message published! " << std::endl;
 }
 
-void CpoBackEnd::saveToFile(const lgmath::se3::Transformation &T_kg,
+void CpoBackEnd::saveToFile(const Transformation &T_kg,
                             double t_k,
                             double t_k1) const {
   // append latest estimate to file
@@ -313,15 +369,17 @@ void CpoBackEnd::saveToFile(const lgmath::se3::Transformation &T_kg,
   outstream.open(results_path_, std::ofstream::out | std::ofstream::app);
 
   const Eigen::Vector3d r_kg_g = T_kg.r_ba_ina();     // vehicle position
-  Eigen::Vector3d r_sg_g = (tf_gps_vehicle_->evaluate() * T_kg).r_ba_ina();   // sensor (receiver) position
-  Eigen::Matrix4d T_sg = (tf_gps_vehicle_->evaluate() * T_kg).matrix();   // sensor pose
+  Eigen::Vector3d r_sg_g = (tf_gps_vehicle_->evaluate() * T_kg).r_ba_ina();
+  Eigen::Matrix4d T_sg = (tf_gps_vehicle_->evaluate() * T_kg).matrix();
 
   // save times and global position for easy plotting
-  outstream << std::setprecision(12) << t_k << ", " << t_k1 << ", ";    // t_k-1 is last time -> alerts to data gaps
-  outstream << r_sg_g(0) << ", " << r_sg_g(1) << ", " << r_sg_g(2) << ", ";   // receiver position in ENU frame
-  outstream << r_kg_g(0) << ", " << r_kg_g(1) << ", " << r_kg_g(2) << ", ";   // vehicle position in ENU frame
+  outstream << std::setprecision(12) << t_k << ", " << t_k1 << ", ";
+  outstream << r_sg_g(0) << ", " << r_sg_g(1) << ", " << r_sg_g(2)
+            << ", ";   // receiver position in ENU frame
+  outstream << r_kg_g(0) << ", " << r_kg_g(1) << ", " << r_kg_g(2)
+            << ", ";   // vehicle position in ENU frame
 
-  // save full transformations as well. Transpose needed to print in row-major order
+  // save full transformations as well. Transpose needed to print in row-major order    // todo: seems to be column major?
   auto temp = T_sg.matrix().transpose();
   auto T_sg_flat = std::vector<double>(temp.data(), temp.data() + 16);
   for (auto entry : T_sg_flat) outstream << entry << ",";
@@ -359,19 +417,19 @@ void CpoBackEnd::getParams() {
 
   Eigen::Array<double, 1, 4> non_holo_diag;
   non_holo_diag << this->get_parameter("non_holo_y").as_double(),
-                   this->get_parameter("non_holo_z").as_double(),
-                   this->get_parameter("non_holo_roll").as_double(),
-                   this->get_parameter("non_holo_pitch").as_double();
+      this->get_parameter("non_holo_z").as_double(),
+      this->get_parameter("non_holo_roll").as_double(),
+      this->get_parameter("non_holo_pitch").as_double();
   nonholonomic_cov_.setZero();
   nonholonomic_cov_.diagonal() = non_holo_diag;
 
   Eigen::Array<double, 1, 6> Qc_diag;
   Qc_diag << this->get_parameter("lin_acc_std_dev_x").as_double(),
-             this->get_parameter("lin_acc_std_dev_y").as_double(),
-             this->get_parameter("lin_acc_std_dev_z").as_double(),
-             this->get_parameter("ang_acc_std_dev_x").as_double(),
-             this->get_parameter("ang_acc_std_dev_y").as_double(),
-             this->get_parameter("ang_acc_std_dev_z").as_double();
+      this->get_parameter("lin_acc_std_dev_y").as_double(),
+      this->get_parameter("lin_acc_std_dev_z").as_double(),
+      this->get_parameter("ang_acc_std_dev_x").as_double(),
+      this->get_parameter("ang_acc_std_dev_y").as_double(),
+      this->get_parameter("ang_acc_std_dev_z").as_double();
   smoothing_factor_information_.setZero();
   smoothing_factor_information_.diagonal() = 1.0 / Qc_diag;
 
@@ -408,31 +466,34 @@ void CpoBackEnd::initializeProblem() {
 
   if (!init_pose_estimated_) {
     // estimate initial T_0g from code solutions
-    Eigen::Vector3d r_k0_ing = toEigenVec3d(edges_.back().msg.enu_pos) - toEigenVec3d(edges_.front().msg.enu_pos);
+    Eigen::Vector3d r_k0_ing = toEigenVec3d(edges_.back().msg.enu_pos)
+        - toEigenVec3d(edges_.front().msg.enu_pos);
     double theta = atan2(r_k0_ing.y(), r_k0_ing.x());
 
     Eigen::Matrix<double, 6, 1> init_pose_vec;
     init_pose_vec << toEigenVec3d(edges_.front().msg.enu_pos), 0, 0, -1 * theta;
 
-    init_pose_ = lgmath::se3::Transformation(init_pose_vec);
+    init_pose_ = Transformation(init_pose_vec);
 
     if (first_window_) {
       // save ENU origin to results file
       std::ofstream outstream;
       outstream.open(results_path_);
       Eigen::Vector3d enu_origin = toEigenVec3d(edges_.back().msg.enu_origin);
-      outstream << std::setprecision(9) << enu_origin[0] << "," << enu_origin[1] << "," << enu_origin[2] << std::endl;
+      outstream << std::setprecision(9) << enu_origin[0] << "," << enu_origin[1]
+                << "," << enu_origin[2] << std::endl;
       outstream.close();
     } else {
       std::cout << "Warning: new initial pose was set midway through run."
-                << "Estimates on either side of this time should not be compared." << std::endl;
+                << "Estimates on either side of this time should not be compared."
+                << std::endl;
     }
   }
 }
 
 void CpoBackEnd::resetEstimator() {
   std::cout << "Clearing window and resetting the estimator." << std::endl;
-  for (int i = 0; i < 50; ++i){
+  for (int i = 0; i < 50; ++i) {
     std::cout << "RESET ESTIMATOR " << i << std::endl;
   }
   edges_.clear();
@@ -443,57 +504,69 @@ void CpoBackEnd::resetEstimator() {
 void CpoBackEnd::printCosts(bool final) {
   std::string stage_str = final ? "Final" : "Initial";
   std::cout << " === " << stage_str << " Costs === " << std::endl;
-  std::cout << "Carrier Phase:       " << tdcp_cost_terms_->cost() << "        Terms:  "
-            << tdcp_cost_terms_->numCostTerms() << std::endl;
-  std::cout << "Nonholonomic:        " << nonholonomic_cost_terms_->cost() << "        Terms:  "
-            << nonholonomic_cost_terms_->numCostTerms() << std::endl;
-  std::cout << "Smoothing:           " << smoothing_cost_terms_->cost() << "        Terms:  "
-            << smoothing_cost_terms_->numCostTerms() << std::endl;
-  std::cout << "Pose Prior:          " << pose_prior_cost_->cost() << "        Terms:  "
-            << pose_prior_cost_->numCostTerms() << std::endl;
+  std::cout << "Carrier Phase:       " << tdcp_cost_terms_->cost()
+            << "        Terms:  " << tdcp_cost_terms_->numCostTerms()
+            << std::endl;
+  std::cout << "Nonholonomic:        " << nonholonomic_cost_terms_->cost()
+            << "        Terms:  " << nonholonomic_cost_terms_->numCostTerms()
+            << std::endl;
+  std::cout << "Smoothing:           " << smoothing_cost_terms_->cost()
+            << "        Terms:  " << smoothing_cost_terms_->numCostTerms()
+            << std::endl;
+  std::cout << "Pose Prior:          " << pose_prior_cost_->cost()
+            << "        Terms:  " << pose_prior_cost_->numCostTerms()
+            << std::endl;
 }
 
 void CpoBackEnd::addMsgToWindow(const cpo_interfaces::msg::TDCP::SharedPtr &msg) {
 
   if (!edges_.empty() && msg->t_a != edges_.back().msg.t_b) {
-    // times don't align, so we've likely missed a msg. To be safe we will clear it for now
-    std::cout << "Warning: mismatched times. Current t_a: " << msg->t_a << ". Previous t_b: "
-              << edges_.back().msg.t_b << " Resetting estimator." << std::endl;
+    // times don't align, so we've likely missed a msg. To be safe we'll clear
+    std::cout << "Warning: mismatched times. Current t_a: " << msg->t_a
+              << ". Previous t_b: " << edges_.back().msg.t_b
+              << " Resetting estimator." << std::endl;
     resetEstimator();
   }
 
   // add latest message
-  lgmath::se3::Transformation new_T_estimate;
+  Transformation new_T_estimate;
   if (trajectory_ != nullptr) {
-    lgmath::se3::Transformation T_b0 = trajectory_->getInterpPoseEval(steam::Time((int64_t)msg->t_b))->evaluate();
-    lgmath::se3::Transformation T_a0 = trajectory_->getInterpPoseEval(steam::Time((int64_t)msg->t_a))->evaluate();
+    Transformation T_b0 =
+        trajectory_->getInterpPoseEval(steam::Time((int64_t) msg->t_b))->evaluate();
+    Transformation T_a0 =
+        trajectory_->getInterpPoseEval(steam::Time((int64_t) msg->t_a))->evaluate();
     new_T_estimate = T_b0 * T_a0.inverse();
   } else {
-    double dist_since_last =
-        edges_.empty() ? 0 : (toEigenVec3d(msg->enu_pos) - toEigenVec3d(edges_.back().msg.enu_pos)).norm();
+    double dist_since_last = edges_.empty() ? 0 : (toEigenVec3d(msg->enu_pos)
+        - toEigenVec3d(edges_.back().msg.enu_pos)).norm();
 
-    if (dist_since_last > 0) dist_since_last = 0.9 * (msg->t_b - msg->t_a) * 1e-9;    // hacky  todo: something else
+    // hacky  todo: something else
+    if (dist_since_last > 0)
+      dist_since_last = 0.9 * (msg->t_b - msg->t_a) * 1e-9;
 
     Eigen::Vector3d r_ba_est{dist_since_last, 0.0, 0.0};
-    new_T_estimate = lgmath::se3::Transformation(Eigen::Matrix3d::Identity(), r_ba_est);
+    new_T_estimate = Transformation(Eigen::Matrix3d::Identity(), r_ba_est);
   }
 
-  Eigen::Matrix<double, 6, 1> plausible_vel;       // temporary way to initialize velocity state variable
+  // temporary way to initialize velocity state variable
+  Eigen::Matrix<double, 6, 1> plausible_vel;
   plausible_vel << -0.9, 0.0, 0.0, 0.0, 0.0, 0.0;
 
-  edges_.emplace_back(CpoEdge{*msg, new_T_estimate, plausible_vel, plausible_vel});
+  edges_.emplace_back(CpoEdge{*msg, new_T_estimate, plausible_vel,
+                              plausible_vel});
 
   // if we have a full queue, discard the oldest msg
   while (edges_.size() > window_size_) {
-
-    init_pose_ = edges_.front().T_ba * init_pose_; // incrementing indices so need to update our T_0g estimate
+    // incrementing indices so need to update our T_0g estimate
+    init_pose_ = edges_.front().T_ba * init_pose_;
     init_pose_.reproject(true);
 
     edges_.pop_front();
   }
 }
 
-geometry_msgs::msg::PoseWithCovariance CpoBackEnd::toPoseMsg(lgmath::se3::TransformationWithCovariance T) {
+geometry_msgs::msg::PoseWithCovariance CpoBackEnd::toPoseMsg(
+    TransformationWithCovariance T) {
   Eigen::Quaterniond q(T.C_ba());
   Eigen::Vector3d r_ba_ina = T.r_ba_ina();
 

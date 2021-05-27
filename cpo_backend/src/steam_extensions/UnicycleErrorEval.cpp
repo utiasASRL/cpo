@@ -11,21 +11,27 @@ bool UnicycleErrorEval::isActive() const {
 
 Eigen::Matrix<double, 4, 1> UnicycleErrorEval::evaluate() const {
   Eigen::Matrix<double, 4, 6> P;
-  P << Eigen::Matrix<double, 4, 1>::Zero(), Eigen::Matrix4d::Identity(), Eigen::Matrix<double, 4, 1>::Zero();
+  P << Eigen::Matrix<double, 4, 1>::Zero(),
+      Eigen::Matrix4d::Identity(),
+      Eigen::Matrix<double, 4, 1>::Zero();
 
   return P * state_vec_->getValue();
 }
 
-Eigen::Matrix<double, 4, 1> UnicycleErrorEval::evaluate(const Eigen::Matrix<double, 4, 4> &lhs,
-                                                        std::vector<Jacobian<4, 6> > *jacs) const {
+Eigen::Matrix<double, 4, 1> UnicycleErrorEval::evaluate(
+    const Eigen::Matrix<double, 4, 4> &lhs,
+    std::vector<Jacobian<4, 6> > *jacs) const {
   // Check and initialize Jacobian array
   if (jacs == nullptr) {
-    throw std::invalid_argument("Null pointer provided to return-input 'jacs' in evaluate");
+    throw std::invalid_argument(
+        "Null pointer provided to return-input 'jacs' in evaluate");
   }
   jacs->clear();
 
   Eigen::Matrix<double, 4, 6> P;
-  P << Eigen::Matrix<double, 4, 1>::Zero(), Eigen::Matrix4d::Identity(), Eigen::Matrix<double, 4, 1>::Zero();
+  P << Eigen::Matrix<double, 4, 1>::Zero(),
+      Eigen::Matrix4d::Identity(),
+      Eigen::Matrix<double, 4, 1>::Zero();
 
   if (!state_vec_->isLocked()) {
     jacs->push_back(steam::Jacobian<4, 6>());

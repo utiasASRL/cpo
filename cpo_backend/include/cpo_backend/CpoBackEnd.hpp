@@ -49,7 +49,7 @@ class CpoBackEnd : public rclcpp::Node {
   void resetEstimator();
 
   /** \brief Store TDCP msg in our queue. Also checks times for dropped msgs */
-  void addMsgToWindow(const cpo_interfaces::msg::TDCP::SharedPtr& msg);
+  void addMsgToWindow(const cpo_interfaces::msg::TDCP::SharedPtr &msg);
 
   /** \brief Saves latest pose information to a CSV file for later analysis */
   void saveToFile(const lgmath::se3::Transformation &T_kg,
@@ -70,10 +70,12 @@ class CpoBackEnd : public rclcpp::Node {
    * \note Absolute accuracy of these poses will not be high after a long period of dead-reckoning but they are useful
    * for plotting
    * */
-  rclcpp::Publisher<geometry_msgs::msg::PoseWithCovariance>::SharedPtr enu_publisher_;
+  rclcpp::Publisher<geometry_msgs::msg::PoseWithCovariance>::SharedPtr
+      enu_publisher_;
 
   /** \brief Publisher of odometry transforms (relative vehicle frame poses) */
-  rclcpp::Publisher<geometry_msgs::msg::PoseWithCovariance>::SharedPtr vehicle_publisher_;
+  rclcpp::Publisher<geometry_msgs::msg::PoseWithCovariance>::SharedPtr
+      vehicle_publisher_;
 
   /** \brief Whether to publish transform estimates at fixed rate (true) or after each msg received (false) */
   bool fixed_rate_publish_;
@@ -116,7 +118,7 @@ class CpoBackEnd : public rclcpp::Node {
   /** \brief The steam trajectory, allows smoothing factors, velocity priors and pose extrapolation */
   std::shared_ptr<steam::se3::SteamTrajInterface> trajectory_;
 
-  Eigen::Matrix<double, 6, 6> smoothing_factor_information_;    // todo: may want to put this stuff in Config struct
+  Eigen::Matrix<double, 6, 6> smoothing_factor_information_;
 
   Eigen::Matrix<double, 1, 1> tdcp_cov_;
 

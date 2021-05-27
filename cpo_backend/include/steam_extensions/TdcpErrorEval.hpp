@@ -23,8 +23,9 @@ class TdcpErrorEval : public ErrorEvaluator<1, 6>::type {
   virtual Eigen::Matrix<double, 1, 1> evaluate() const;
 
   /** \brief Evaluate the 1-d measurement error and Jacobians */
-  virtual Eigen::Matrix<double, 1, 1> evaluate(const Eigen::Matrix<double, 1, 1> &lhs,
-                                               std::vector<Jacobian<1, 6> > *jacs) const;
+  virtual Eigen::Matrix<double, 1, 1> evaluate(
+      const Eigen::Matrix<double, 1, 1> &lhs,
+      std::vector<Jacobian<1, 6> > *jacs) const;
 
  private:
   /** The double-differenced phase-range pseudo-measurement */
