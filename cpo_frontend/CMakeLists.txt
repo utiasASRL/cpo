@@ -45,6 +45,7 @@ target_include_directories(cpo_frontend PUBLIC ${RTK_LIB_DIRECTORY}/src ${EIGEN3
 target_link_libraries(cpo_frontend serial rtklib)
 
 add_executable(replay_RTCM src/replay_rtcm.cpp)
+target_include_directories(replay_RTCM PUBLIC include)
 target_link_libraries(replay_RTCM serial)
 
 add_executable(clock_server src/clock_server.cpp)

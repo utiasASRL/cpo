@@ -2,6 +2,7 @@
 
 #include <iostream>     // for debugging logging
 
+#include <cpo_utilities.hpp>
 #include <CpoFrontEnd.hpp>
 
 CpoFrontEnd::CpoFrontEnd()
@@ -13,7 +14,7 @@ CpoFrontEnd::CpoFrontEnd()
   this->declare_parameter("log_serial", true);
   this->declare_parameter("log_serial_filename", "log.bin");
   this->declare_parameter("data_path",
-                          "/home/ben/CLionProjects/gpso/data/rtcm3/feb15c.BIN");
+                          "~/CLionProjects/gpso/data/rtcm3/feb15c.BIN");
   this->declare_parameter("approximate_time", -1);
   this->declare_parameter("enable_tropospheric_correction", true);
 
@@ -23,9 +24,8 @@ CpoFrontEnd::CpoFrontEnd()
   log_serial = this->get_parameter("log_serial").as_bool();
   std::string log_serial_filename =
       this->get_parameter("log_serial_filename").as_string();
-  log_serial_path = "/home/ben/CLionProjects/ros2-ws/src/cpo_frontend/data/"
-      + log_serial_filename;  // todo: better path
-  rtcm_path = this->get_parameter("data_path").as_string();
+  log_serial_path = expandUser("~/CLionProjects/ros2-ws/src/cpo_frontend/data/") + log_serial_filename;
+  rtcm_path = expandUser(this->get_parameter("data_path").as_string());
 
   use_sim_time = this->get_parameter("use_sim_time").as_bool();
   enable_tropospheric_correction =

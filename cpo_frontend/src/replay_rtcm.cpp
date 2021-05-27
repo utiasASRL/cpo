@@ -3,6 +3,7 @@
 #include <iostream>
 #include <filesystem>
 
+#include <cpo_utilities.hpp>
 #include "serial/serial.h"
 
 namespace fs = std::filesystem;
@@ -11,8 +12,7 @@ namespace fs = std::filesystem;
 int main() {
 
   // specify location of binary RTCM file
-  // todo: fix path
-  std::string data_directory = "/home/ben/CLionProjects/gpso/data/rtcm3/";
+  std::string data_directory = expandUser("~/CLionProjects/gpso/data/rtcm3/");
   std::string data_file = "feb15c.BIN";
   fs::path data_path{data_directory + data_file};
   if (!fs::exists(data_path)) {

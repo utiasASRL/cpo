@@ -87,7 +87,7 @@ def main():
     dataset = "feb15c"  # todo: this should update automatically
     trim_start_rows = 10
 
-    csv_dir = "/home/ben/CLionProjects/ros2-ws/src/cpo_analysis/data/estimates/"  # todo: non-hard-coded-path
+    csv_dir = osp.expanduser("~/CLionProjects/ros2-ws/src/cpo_analysis/data/estimates/")  # todo: non-hard-coded-path
     csv_file = "cpo.csv"
     enu_origin = np.genfromtxt(osp.join(csv_dir, csv_file), delimiter=',', max_rows=1)
     estimates = np.genfromtxt(osp.join(csv_dir, csv_file), delimiter=',', skip_header=1 + trim_start_rows)
@@ -96,7 +96,7 @@ def main():
     start_time = safe_float(estimates[0, 0])
     end_time = safe_float(estimates[-1, 0])
 
-    gt_dir = "/home/ben/CLionProjects/ros2-ws/src/cpo_analysis/data/groundtruth/"
+    gt_dir = osp.expanduser("~/CLionProjects/ros2-ws/src/cpo_analysis/data/groundtruth/")
     gt_file = dataset + "_gga.ASC"
     if dataset[:5] == "feb10":
         day = 2144 * 7 + 3  # Feb.10/21

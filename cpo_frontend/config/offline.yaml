@@ -3,7 +3,7 @@ cpo_front_end:
     from_serial: false
     log_serial: false
 
-    data_path: "/home/ben/CLionProjects/gpso/data/rtcm3/feb15c.BIN"
+    data_path: "~/CLionProjects/gpso/data/rtcm3/feb15c.BIN"
 
     port_path: "/dev/ttyUSB0"
     baud: 57600
