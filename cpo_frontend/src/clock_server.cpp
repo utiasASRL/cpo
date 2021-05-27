@@ -18,23 +18,28 @@ class ClockServer : public rclcpp::Node {
   ClockServer() : Node("clock_server") {
     publisher_ = this->create_publisher<ClockMsg>("clock", 10);
 
-    this->declare_parameter("first_meas_time", 1613417015);    // defaults to start of feb15a sample dataset
+    // first_meas_time defaults to start of feb15a sample dataset
+    this->declare_parameter("first_meas_time", 1613417015);
     this->declare_parameter("playback_rate", 1);
     this->declare_parameter("publish_rate", 20);
 
-    first_meas_time_ = this->get_parameter("first_meas_time").as_int() * (long)1e9;
+    first_meas_time_ =
+        this->get_parameter("first_meas_time").as_int() * (long) 1e9;
     playback_rate_ = this->get_parameter("playback_rate").as_int();
     publish_rate_ = this->get_parameter("publish_rate").as_int();
-    auto period = std::chrono::milliseconds(1000/publish_rate_);
+    auto period = std::chrono::milliseconds(1000 / publish_rate_);
 
-    timer_ = this->create_wall_timer(period, std::bind(&ClockServer::timer_callback, this));
+    timer_ = this->create_wall_timer(period,
+                                     std::bind(&ClockServer::timer_callback,
+                                               this));
     start_time_ = Clock::now();
   }
 
  private:
   void timer_callback() {
     ClockMsg msg;
-    auto elapsed_time = std::chrono::duration_cast<std::chrono::nanoseconds>(Clock::now() - start_time_).count();
+    auto elapsed_time = std::chrono::duration_cast<std::chrono::nanoseconds>(
+        Clock::now() - start_time_).count();
     auto sim_time_ns = elapsed_time * playback_rate_ + first_meas_time_;
     msg.clock.set__sec(sim_time_ns / ns_in_s_);
     msg.clock.set__nanosec(sim_time_ns % ns_in_s_);

@@ -11,7 +11,8 @@ namespace fs = std::filesystem;
 int main() {
 
   // specify location of binary RTCM file
-  std::string data_directory = "/home/ben/CLionProjects/gpso/data/rtcm3/"; // todo: fix path
+  // todo: fix path
+  std::string data_directory = "/home/ben/CLionProjects/gpso/data/rtcm3/";
   std::string data_file = "feb15c.BIN";
   fs::path data_path{data_directory + data_file};
   if (!fs::exists(data_path)) {
@@ -24,7 +25,8 @@ int main() {
   unsigned long baud = 57600;
   std::string port1_path = "/dev/ttyUSB1";
   if (!fs::exists(port1_path)) {
-    throw std::runtime_error("Serial connection not found. Check that USB is plugged in.");
+    throw std::runtime_error(
+        "Serial connection not found. Check that USB is plugged in.");
   }
   serial::Serial port1(port1_path, baud, serial::Timeout::simpleTimeout(1000));
   usleep(50000);
@@ -45,7 +47,7 @@ int main() {
     port1.write(&data, 1);
 
     // don't want to send all the data at once
-    if (bytes_sent++ % bytes_per_second == 0) {     // todo - figure out best way to time
+    if (bytes_sent++ % bytes_per_second == 0) {
       usleep(1e6);
     }
   }

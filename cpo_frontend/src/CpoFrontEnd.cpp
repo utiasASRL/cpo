@@ -12,7 +12,8 @@ CpoFrontEnd::CpoFrontEnd()
   this->declare_parameter("from_serial", true);
   this->declare_parameter("log_serial", true);
   this->declare_parameter("log_serial_filename", "log.bin");
-  this->declare_parameter("data_path", "/home/ben/CLionProjects/gpso/data/rtcm3/feb15c.BIN");
+  this->declare_parameter("data_path",
+                          "/home/ben/CLionProjects/gpso/data/rtcm3/feb15c.BIN");
   this->declare_parameter("approximate_time", -1);
   this->declare_parameter("enable_tropospheric_correction", true);
 
@@ -20,23 +21,30 @@ CpoFrontEnd::CpoFrontEnd()
   baud_ = this->get_parameter("baud").as_int();
   from_serial = this->get_parameter("from_serial").as_bool();
   log_serial = this->get_parameter("log_serial").as_bool();
-  std::string log_serial_filename = this->get_parameter("log_serial_filename").as_string();
-  log_serial_path = "/home/ben/CLionProjects/ros2-ws/src/cpo_frontend/data/" + log_serial_filename;  // todo: better path
+  std::string log_serial_filename =
+      this->get_parameter("log_serial_filename").as_string();
+  log_serial_path = "/home/ben/CLionProjects/ros2-ws/src/cpo_frontend/data/"
+      + log_serial_filename;  // todo: better path
   rtcm_path = this->get_parameter("data_path").as_string();
 
   use_sim_time = this->get_parameter("use_sim_time").as_bool();
-  enable_tropospheric_correction = this->get_parameter("enable_tropospheric_correction").as_bool();
+  enable_tropospheric_correction =
+      this->get_parameter("enable_tropospheric_correction").as_bool();
 
   if (!from_serial && !fs::exists(rtcm_path)) {
     throw std::runtime_error("RTCM data file not found.");
   }
 
   if (from_serial && !fs::exists(port_path_)) {
-    throw std::runtime_error("Serial connection not found. Check that USB is plugged in.");
+    throw std::runtime_error(
+        "Serial connection not found. Check that USB is plugged in.");
   }
 
   if (from_serial) {
-    serial_port = std::make_shared<serial::Serial>(port_path_, baud_, serial::Timeout::simpleTimeout(1000));
+    serial_port = std::make_shared<serial::Serial>(port_path_,
+                                                   baud_,
+                                                   serial::Timeout::simpleTimeout(
+                                                       1000));
   } else {
     serial_port = nullptr;    // don't need serial port if reading from file
   }
@@ -56,15 +64,18 @@ CpoFrontEnd::CpoFrontEnd()
   if (temp_time < 0) {
     // setting to negative value indicates we want to use the live time
     approximate_time = std::time(nullptr);
-    std::cout << "Set approximate time to " << std::setprecision(12) << approximate_time << std::endl;
+    std::cout << "Set approximate time to " << std::setprecision(12)
+              << approximate_time << std::endl;
   } else {
     approximate_time = temp_time;
   }
 
   rtcm.time = {.time = approximate_time};
 
-  code_positioning_options.navsys = SYS_GPS;    // using GPS only for this for now
-  code_positioning_options.maxgdop = 15.0;      // a big value so we get a solution even if not super accurate
+  // using GPS only for this for now
+  code_positioning_options.navsys = SYS_GPS;
+  // set to a big value so we get a solution even if not super accurate
+  code_positioning_options.maxgdop = 15.0;
   code_positioning_options.sateph = EPHOPT_BRDC;
 
   prev_sats = std::make_shared<std::unordered_map<uint8_t, SatelliteObs>>();
@@ -128,10 +139,13 @@ void CpoFrontEnd::setEnuOrigin(double *rr) {
   C_enu_ecef_ << C[0], C[3], C[6], C[1], C[4], C[7], C[2], C[5], C[8];
   enu_origin_set = true;
 
-  geodetic_enu_origin_ = Eigen::Vector3d{geo_init[0] * R2D, geo_init[1] * R2D, geo_init[2]};
+  geodetic_enu_origin_ =
+      Eigen::Vector3d{geo_init[0] * R2D, geo_init[1] * R2D, geo_init[2]};
 
-  std::cout << "ENU origin set to " << std::setprecision(10) << geodetic_enu_origin_[0] << " deg lat, "
-            << geodetic_enu_origin_[1] << " deg lat, " << std::setprecision(6) << geodetic_enu_origin_[2] << " m alt."
+  std::cout << "ENU origin set to " << std::setprecision(10)
+            << geodetic_enu_origin_[0] << " deg lat, "
+            << geodetic_enu_origin_[1] << " deg lat, " << std::setprecision(6)
+            << geodetic_enu_origin_[2] << " m alt."
             << std::endl;
 }
 

@@ -29,7 +29,8 @@ class SatelliteObs {
   }
 
   /** \brief Sets tropospheric_delay_ based on receiver & satellite positions */
-  void estimateTroposphericDelay(const double *satellite_pos_vel, const double *receiver_pos);
+  void estimateTroposphericDelay(const double *satellite_pos_vel,
+                                 const double *receiver_pos);
 
  private:
 

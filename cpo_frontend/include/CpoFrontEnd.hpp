@@ -29,7 +29,10 @@ class CpoFrontEnd : public rclcpp::Node {
    *
    * \return status     [0 error; 1 success]
    * */
-  int getSatelliteVector(int sat_no, gtime_t time, gtime_t eph_time, Eigen::Vector3d &r_sa_g);
+  int getSatelliteVector(int sat_no,
+                         gtime_t time,
+                         gtime_t eph_time,
+                         Eigen::Vector3d &r_sa_g);
 
   /** \brief Publishes message with phases, vectors in it */
   void publishTdcp(const cpo_interfaces::msg::TDCP &message);
@@ -49,7 +52,7 @@ class CpoFrontEnd : public rclcpp::Node {
 
   /** \brief Get geodetic (lat/long/alt) coordinates of our local ENU frame */
   Eigen::Vector3d getGeodeticEnuOrigin() {
-        return geodetic_enu_origin_;
+    return geodetic_enu_origin_;
   }
 
   /** \brief Update the latest code solution we calculated */
