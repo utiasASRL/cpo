@@ -2,6 +2,8 @@
 
 import csv
 import os.path as osp
+
+import math
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
@@ -79,17 +81,16 @@ def read_gpgga(gga_path, gps_day, proj_origin, start_time=0.0, end_time=49999999
 
 
 def main():
-
     plt.rc('axes', labelsize=12, titlesize=14)
     plt.rcParams["font.family"] = "serif"
 
-    dataset = "feb15c"          # todo: this should update automatically
+    dataset = "feb15c"  # todo: this should update automatically
     trim_start_rows = 10
 
-    csv_dir = "/home/ben/CLionProjects/ros2-ws/src/cpo_analysis/data/estimates/"    # todo: non-hard-coded-path
+    csv_dir = "/home/ben/CLionProjects/ros2-ws/src/cpo_analysis/data/estimates/"  # todo: non-hard-coded-path
     csv_file = "cpo.csv"
     enu_origin = np.genfromtxt(osp.join(csv_dir, csv_file), delimiter=',', max_rows=1)
-    estimates = np.genfromtxt(osp.join(csv_dir, csv_file), delimiter=',', skip_header=1+trim_start_rows)
+    estimates = np.genfromtxt(osp.join(csv_dir, csv_file), delimiter=',', skip_header=1 + trim_start_rows)
 
     # get start and end time of SWF data to get correct section from Doppler, ground truth
     start_time = safe_float(estimates[0, 0])
@@ -142,9 +143,10 @@ def main():
 
     fig2, ax2 = plt.subplots(nrows=3, ncols=1, figsize=[8, 8])
     fig2.subplots_adjust(left=0.10, bottom=0.06, right=0.96, top=0.93)
-    ax2[0].plot(relative_errors[:, 7] - relative_errors[0, 7], relative_errors[:, 4], c='C0')       # x errors
-    ax2[1].plot(relative_errors[:, 7] - relative_errors[0, 7], relative_errors[:, 5], c='C0')       # y errors
-    ax2[2].plot(relative_errors[:, 7] - relative_errors[0, 7], np.sqrt(relative_errors[:, 4]**2 + relative_errors[:, 5]**2), c='C0')       # planar errors
+    ax2[0].plot(relative_errors[:, 7] - relative_errors[0, 7], relative_errors[:, 4], c='C0')  # x errors
+    ax2[1].plot(relative_errors[:, 7] - relative_errors[0, 7], relative_errors[:, 5], c='C0')  # y errors
+    ax2[2].plot(relative_errors[:, 7] - relative_errors[0, 7],
+                np.sqrt(relative_errors[:, 4] ** 2 + relative_errors[:, 5] ** 2), c='C0')  # planar errors
 
     ax2[0].set_title('Position Errors wrt Ground Truth - {0}'.format(dataset))
     ax2[2].set_xlabel('Distance Along Path (m)')
@@ -157,12 +159,28 @@ def main():
 
     # errors by time
     fig3 = plt.figure(3, figsize=[8, 3])
-    plt.plot(relative_errors[:, 0] - 1613400000, np.sqrt(relative_errors[:, 4]**2 + relative_errors[:, 5]**2), c='C1')
+    plt.plot(relative_errors[:, 0] - 1613400000, np.sqrt(relative_errors[:, 4] ** 2 + relative_errors[:, 5] ** 2),
+             c='C1')
     ax2[0].set_title('Position Errors by Timestamp - {0}'.format(dataset))
     plt.xlabel('Timestamp - 1613400000 (s)')
     plt.ylabel('2D Position Error (m)')
     plt.ylim([0, 2])
     plt.tight_layout()
+
+    fig4 = plt.figure(4)
+    tmp = []
+    for row in estimates:
+        if row[0] < 1613419716 or row[0] > 1613419897:
+            continue
+        yaw = -math.atan2(row[9], row[8])
+        pitch = -math.atan2(-row[10], math.sqrt(row[14] ** 2 + row[18] ** 2))
+        roll = -math.atan2(row[14], row[18])
+        tmp.append([yaw, pitch, roll])
+    ypr = np.array(tmp)
+    plt.title("Standalone Carrier Phase Odometry")
+    plt.xlabel("Seconds")
+    plt.ylabel("Estimated Angle (rad)")
+    plt.plot(ypr[:])  # plot yaw pitch roll
 
     plt.show()
 
