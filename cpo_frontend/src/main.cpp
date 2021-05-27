@@ -45,6 +45,11 @@ int main(int argc, char **argv) {
 
     // phase observation received
     if (rtcm_status == 1) {
+      if (satsys(node->rtcm.obs.data->sat, nullptr) != SYS_GPS) {
+        std::cout << "Only GPS supported currently. Not using observation."
+                  << std::endl;
+      }
+
       if (node->use_sim_time && node->rtcm.obs.data->time.time - LEAP_SECONDS
           < (node->get_clock()->now().seconds() - 5)) {
         std::cout << "Found old message. Continuing. "
@@ -57,8 +62,8 @@ int main(int argc, char **argv) {
       for (unsigned i = 0; i < node->rtcm.obs.n; ++i) {
         obsd_t &obs = node->rtcm.obs.data[i];
 
-        // check the observation is from a positioning satellite (as opposed to SBAS)
-        // todo: assuming GPS right now
+        // check the observation is from a GPS positioning satellite
+        // (as opposed to SBAS). Currently GPS only constellation supported.
         if (obs.sat < MINPRNGPS || obs.sat > MAXPRNGPS) continue;
 
         double now_time = node->get_clock()->now().seconds();     // UTC time
