@@ -26,8 +26,6 @@ void SatelliteObs::estimateTroposphericDelay(const double *satellite_pos_vel,
   double niell_mf =
       tropmapf(observation_.time, receiver_pos_geodetic, azel, mapfw);
   tropospheric_delay_ = 2.3 * niell_mf + 0.14 * (*mapfw);
-
-  printf("Tropospheric delay set to %f \n", tropospheric_delay_);
 }
 
 double SatelliteObs::getAdjPhaseRange() const {

@@ -5,18 +5,8 @@
 
 int main(int argc, char **argv) {
 
-  // initialize ROS2
+  // initialize ROS2 and create our node
   rclcpp::init(argc, argv);
-
-  // set up RTKLIB logging
-  int trace_level = 3;
-  // todo: see if we can remove RTKLIB logging
-  fs::path trace_path{"/home/ben/Desktop/debug.trace"};
-  if (trace_level > 0) {
-    traceopen(trace_path.c_str());
-    tracelevel(trace_level);
-  }
-
   auto node = std::make_shared<CpoFrontEnd>();
 
   unsigned char byte_in;
@@ -74,10 +64,6 @@ int main(int argc, char **argv) {
         double now_time = node->get_clock()->now().seconds();     // UTC time
         node->curr_sats->insert(std::make_pair(obs.sat,
                                                SatelliteObs(obs, now_time)));
-
-        if (obs.LLI[0]) {
-          trace(2, "Lock loss for satellite %i.\n", obs.sat);
-        }
       }
 
       std::cout << "Observed " << node->curr_sats->size() << " satellites:  ";
