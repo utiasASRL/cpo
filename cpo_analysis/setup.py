@@ -15,7 +15,7 @@ setup(
     zip_safe=True,
     maintainer='ben',
     maintainer_email='ben.congram@robotics.utias.utoronto.ca',
-    description='TODO: Package description',
+    description='Scripts for analyzing the results of carrier phase odometry',
     license='BSD',
     tests_require=['pytest'],
     entry_points={

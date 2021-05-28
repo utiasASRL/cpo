@@ -2,7 +2,7 @@
 
 import csv
 import os.path as osp
-
+import argparse
 import math
 import numpy as np
 import matplotlib
@@ -39,7 +39,8 @@ def safe_int(field):
 def read_gpgga(gga_path, gps_day, proj_origin, start_time=0.0, end_time=4999999999.9):
     """Read file of ASCII GPGGA messages and return measurements as array in UTM coordinates"""
 
-    # todo: transverse mercator projection very slightly different from Euclidean ENU
+    # note: transverse mercator projection very slightly different from Euclidean ENU but negligible if position near
+    # origin (e.g. < 2km)
     projection = Proj(
         "+proj=etmerc +ellps=WGS84 +lat_0={0} +lon_0={1} +x_0=0 +y_0=0 +z_0={2} +k_0=1".format(proj_origin[0],
                                                                                                proj_origin[1],
@@ -81,23 +82,33 @@ def read_gpgga(gga_path, gps_day, proj_origin, start_time=0.0, end_time=49999999
 
 
 def main():
+    parser = argparse.ArgumentParser(description='Plot integrated carrier phase odometry estimates.')
+    parser.add_argument('--dataset', '-d', type=str, help='Name of dataset to retrieve groundtruth file.',
+                        default='feb15c')
+    parser.add_argument('--groundtruth_dir', '-g', type=str, help='Path to directory with RTK ground truth (optional)',
+                        default='~/CLionProjects/ros2-ws/src/cpo_analysis/data/groundtruth/')
+    parser.add_argument('--estimates_path', '-e', type=str, help='Path to our TDCP estimates CSV file.',
+                        default='~/CLionProjects/ros2-ws/src/cpo_analysis/data/estimates/cpo.csv')
+    args = parser.parse_args()
+
     plt.rc('axes', labelsize=12, titlesize=14)
     plt.rcParams["font.family"] = "serif"
 
-    dataset = "feb15c"  # todo: this should update automatically
-    trim_start_rows = 10
+    dataset = args.dataset
+    trim_start_rows = 10  # optionally can be used to trim off part before robot begins driving
 
-    csv_dir = osp.expanduser("~/CLionProjects/ros2-ws/src/cpo_analysis/data/estimates/")  # todo: non-hard-coded-path
-    csv_file = "cpo.csv"
-    enu_origin = np.genfromtxt(osp.join(csv_dir, csv_file), delimiter=',', max_rows=1)
-    estimates = np.genfromtxt(osp.join(csv_dir, csv_file), delimiter=',', skip_header=1 + trim_start_rows)
+    estimates_path = osp.expanduser(args.estimates_path)
+    enu_origin = np.genfromtxt(estimates_path, delimiter=',', max_rows=1)
+    estimates = np.genfromtxt(estimates_path, delimiter=',', skip_header=1 + trim_start_rows)
 
     # get start and end time of SWF data to get correct section from Doppler, ground truth
     start_time = safe_float(estimates[0, 0])
     end_time = safe_float(estimates[-1, 0])
 
-    gt_dir = osp.expanduser("~/CLionProjects/ros2-ws/src/cpo_analysis/data/groundtruth/")
+    gt_dir = osp.expanduser(args.groundtruth_dir)
     gt_file = dataset + "_gga.ASC"
+
+    # GPS day required to parse ground truth. We determine it here.
     if dataset[:5] == "feb10":
         day = 2144 * 7 + 3  # Feb.10/21
     elif dataset[:5] == "feb15":
@@ -106,6 +117,9 @@ def main():
         raise Exception("Unknown dataset - {0}".format(dataset))
 
     r_gt = read_gpgga(osp.join(gt_dir, gt_file), day, enu_origin, start_time=start_time, end_time=end_time)
+
+    if not len(r_gt) > 0:
+        raise ValueError('Ground truth between start and end time empty. Check if using the correct ground truth file.')
 
     # extract portion of GPS that had RTK-Fixed fix (the gold standard)
     r_rtk = r_gt[r_gt[:, 4] == 4]
@@ -158,7 +172,7 @@ def main():
     ax2[2].set_ylim([0, 2])
 
     # errors by time
-    fig3 = plt.figure(3, figsize=[8, 3])
+    plt.figure(3, figsize=[8, 3])
     plt.plot(relative_errors[:, 0] - 1613400000, np.sqrt(relative_errors[:, 4] ** 2 + relative_errors[:, 5] ** 2),
              c='C1')
     ax2[0].set_title('Position Errors by Timestamp - {0}'.format(dataset))
@@ -167,12 +181,12 @@ def main():
     plt.ylim([0, 2])
     plt.tight_layout()
 
-    fig4 = plt.figure(4)
+    plt.figure(4)
     tmp = []
     for row in estimates:
         if row[0] < 1613419716 or row[0] > 1613419897:
             continue
-        yaw = -math.atan2(row[9], row[8])       # note: T saved off is column major
+        yaw = -math.atan2(row[9], row[8])  # note: T saved off is column major
         pitch = -math.atan2(-row[10], math.sqrt(row[14] ** 2 + row[18] ** 2))
         roll = -math.atan2(row[14], row[18])
         tmp.append([yaw, pitch, roll])

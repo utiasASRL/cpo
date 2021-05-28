@@ -3,7 +3,7 @@
 <package format="3">
   <name>cpo_analysis</name>
   <version>0.0.0</version>
-  <description>TODO: Package description</description>
+  <description>Scripts for analyzing the results of carrier phase odometry</description>
   <maintainer email="ben.congram@robotics.utias.utoronto.ca">Ben</maintainer>
   <license>BSD</license>
 
