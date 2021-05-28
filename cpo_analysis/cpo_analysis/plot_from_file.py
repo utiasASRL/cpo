@@ -172,7 +172,7 @@ def main():
     for row in estimates:
         if row[0] < 1613419716 or row[0] > 1613419897:
             continue
-        yaw = -math.atan2(row[9], row[8])
+        yaw = -math.atan2(row[9], row[8])       # note: T saved off is column major
         pitch = -math.atan2(-row[10], math.sqrt(row[14] ** 2 + row[18] ** 2))
         roll = -math.atan2(row[14], row[18])
         tmp.append([yaw, pitch, roll])

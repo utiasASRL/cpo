@@ -98,7 +98,6 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
           temp_statevar_a(new TransformStateVar(Transformation()));
       TransformStateEvaluator::Ptr
           temp_pose_a = TransformStateEvaluator::MakeShared(temp_statevar_a);
-      // todo: below technically off by one (?) - handle better later
       VectorSpaceStateVar::Ptr temp_velocity_a =
           VectorSpaceStateVar::Ptr(new VectorSpaceStateVar(edges_.front().v_a));
       temp_statevar_a->setLock(true);
@@ -370,9 +369,8 @@ void CpoBackEnd::saveToFile(const Transformation &T_kg, double t_k) const {
   outstream << r_kg_g(0) << ", " << r_kg_g(1) << ", " << r_kg_g(2)
             << ", ";   // vehicle position in ENU frame
 
-  // save full transformations as well. Transpose needed to print in row-major order    // todo: seems to be column major?
-  auto temp = T_sg.matrix().transpose();
-  auto T_sg_flat = std::vector<double>(temp.data(), temp.data() + 16);
+  // save full transformations as well (** column major)
+  auto T_sg_flat = std::vector<double>(T_sg.data(), T_sg.data() + 16);
   for (auto entry : T_sg_flat) outstream << entry << ",";
 
   outstream << std::endl;

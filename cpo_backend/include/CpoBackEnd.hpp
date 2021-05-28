@@ -10,10 +10,10 @@
 #include <deque>
 
 struct CpoEdge {
-  cpo_interfaces::msg::TDCP msg;
-  lgmath::se3::Transformation T_ba;
-  Eigen::Matrix<double, 6, 1> v_a;
-  Eigen::Matrix<double, 6, 1> v_b;
+  cpo_interfaces::msg::TDCP msg;    /// the TDCP msg spanning this edge
+  lgmath::se3::Transformation T_ba; /// transformation estimate
+  Eigen::Matrix<double, 6, 1> v_a;  /// velocity estimate at vertex a
+  Eigen::Matrix<double, 6, 1> v_b;  /// velocity estimate at vertex a
 };
 
 /** \brief Class that subscribes to TDCP pseudo-measurements and outputs odometry estimates */
