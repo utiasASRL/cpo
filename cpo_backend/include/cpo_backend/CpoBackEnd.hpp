@@ -57,8 +57,7 @@ class CpoBackEnd : public rclcpp::Node {
                   double t_k1 = 0) const;
 
   /** \brief Takes in Transforms and calls ROS publishers */
-  void publishPoses(const lgmath::se3::TransformationWithCovariance &T_ng,
-                    const lgmath::se3::TransformationWithCovariance &T_n_n1);
+  void publishPose(const lgmath::se3::TransformationWithCovariance &T_ng);
 
   /** \brief Helper to convert lgmath Transform to ROS2 msg */
   static geometry_msgs::msg::PoseWithCovariance toPoseMsg(lgmath::se3::TransformationWithCovariance T);
@@ -66,16 +65,9 @@ class CpoBackEnd : public rclcpp::Node {
   /** \brief Subscriber for TDCP msgs */
   rclcpp::Subscription<cpo_interfaces::msg::TDCP>::SharedPtr subscription_;
 
-  /** \brief Publisher of integrated odometry in ENU frame
-   * \note Absolute accuracy of these poses will not be high after a long period of dead-reckoning but they are useful
-   * for plotting
-   * */
+  /** \brief Publisher of integrated odometry in ENU frame */
   rclcpp::Publisher<geometry_msgs::msg::PoseWithCovariance>::SharedPtr
       enu_publisher_;
-
-  /** \brief Publisher of odometry transforms (relative vehicle frame poses) */
-  rclcpp::Publisher<geometry_msgs::msg::PoseWithCovariance>::SharedPtr
-      vehicle_publisher_;
 
   /** \brief Whether to publish transform estimates at fixed rate (true) or after each msg received (false) */
   bool fixed_rate_publish_;
@@ -89,6 +81,7 @@ class CpoBackEnd : public rclcpp::Node {
   /** \brief The fixed sensor-vehicle transform. Allows us to do estimation in the vehicle frame */
   steam::se3::FixedTransformEvaluator::ConstPtr tf_gps_vehicle_;
 
+  /** \brief The STEAM optimizer */
   std::shared_ptr<steam::SolverBase> solver_;
 
   /** \brief The steam problem. */

@@ -23,11 +23,6 @@ CpoBackEnd::CpoBackEnd() : Node("cpo_back_end") {
                                                                            &CpoBackEnd::_tdcpCallback,
                                                                            this,
                                                                            std::placeholders::_1));
-
-  vehicle_publisher_ =
-      this->create_publisher<geometry_msgs::msg::PoseWithCovariance>(
-          "cpo_odometry",
-          10);
   enu_publisher_ =
       this->create_publisher<geometry_msgs::msg::PoseWithCovariance>("cpo_enu",
                                                                      10);
@@ -300,8 +295,7 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
       double t_n = (double) edges_.back().msg.t_b * 1e-9;
       double t_0 = (double) edges_.front().msg.t_a * 1e-9;
       Transformation T_ng = statevars.back()->getValue() * init_pose_;
-      const auto &T_n_n1 = edges_.back().T_ba;
-      publishPoses(init_pose_, T_n_n1); // todo: sort out function
+      publishPose(init_pose_);
       saveToFile(init_pose_, t_0);
 
       std::cout << "Last time was: " << std::setprecision(12) << t_n;
@@ -348,14 +342,11 @@ void CpoBackEnd::_timedCallback() {
   TransformationWithCovariance T_kg = T_k0 * T_0g;
 
   // publish
-  publishPoses(T_kg, T_kg);       // todo: sort this function out
+  publishPose(T_kg);
   saveToFile(T_kg, t_k);
 }
 
-void CpoBackEnd::publishPoses(const TransformationWithCovariance &T_0g,
-                              const TransformationWithCovariance &T_n_n1) {
-  geometry_msgs::msg::PoseWithCovariance relative_pose_msg = toPoseMsg(T_n_n1);
-  vehicle_publisher_->publish(relative_pose_msg);
+void CpoBackEnd::publishPose(const TransformationWithCovariance &T_0g) {
   geometry_msgs::msg::PoseWithCovariance enu_pose_msg = toPoseMsg(T_0g);
   enu_publisher_->publish(enu_pose_msg);
   std::cout << "Message published! " << std::endl;
@@ -363,7 +354,7 @@ void CpoBackEnd::publishPoses(const TransformationWithCovariance &T_0g,
 
 void CpoBackEnd::saveToFile(const Transformation &T_kg,
                             double t_k,
-                            double t_k1) const {
+                            double t_k1) const {    //todo: sort this out too
   // append latest estimate to file
   std::ofstream outstream;
   outstream.open(results_path_, std::ofstream::out | std::ofstream::app);
