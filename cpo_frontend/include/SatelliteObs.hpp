@@ -2,7 +2,9 @@
 
 #include <rtklib.h>
 
-#define LEAP_SECONDS 18   // todo: may want to use rtcm->nav.utc_gps[4] instead
+/* \note: this will need changing if additional leap seconds added.
+ * Possible there is a way to consistently get this from navigation data. */
+#define LEAP_SECONDS 18
 
 /** \brief Stores data related to one satellite observation at one timestamp
  * Reuses RTKLIB's obsd_t struct with some additional calculated values

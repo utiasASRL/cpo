@@ -19,8 +19,8 @@ windows:
       - ros2 run cpo_backend cpo_backend --ros-args --params-file ./src/cpo_backend/config/offline.yaml
       - ros2 run cpo_frontend cpo_frontend --ros-args --params-file ./src/cpo_frontend/config/offline.yaml
       - ros2 run cpo_analysis listener
-#      - ros2 run cpo_frontend clock_server --ros-args -p first_meas_time:=1613417015  # feb15a
-      - ros2 run cpo_frontend clock_server --ros-args -p first_meas_time:=1613419580 # feb15c
-#      - ros2 run cpo_frontend clock_server --ros-args -p first_meas_time:=1613424580 # feb15e
-#      - ros2 run cpo_frontend clock_server --ros-args -p first_meas_time:=1613425843 # feb15f
+      # - ros2 run cpo_frontend clock_server --ros-args -p first_meas_time:=1613417015 -p playback_rate:=10 # feb15a
+      - ros2 run cpo_frontend clock_server --ros-args -p first_meas_time:=1613419580 -p playback_rate:=10 # feb15c
+      # - ros2 run cpo_frontend clock_server --ros-args -p first_meas_time:=1613424580 -p playback_rate:=10 # feb15e
+      # - ros2 run cpo_frontend clock_server --ros-args -p first_meas_time:=1613425815 -p playback_rate:=10 # feb15f
       - ros2 topic list

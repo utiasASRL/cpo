@@ -46,17 +46,24 @@ int main(int argc, char **argv) {
     // phase observation received
     if (rtcm_status == 1) {
       if (satsys(node->rtcm.obs.data->sat, nullptr) != SYS_GPS) {
-        std::cout << "Only GPS supported currently. Not using observation."
+        std::cout << "Only GPS supported currently. Not using this observation."
                   << std::endl;
       }
 
-      if (node->use_sim_time && node->rtcm.obs.data->time.time - LEAP_SECONDS
-          < (node->get_clock()->now().seconds() - 5)) {
-        std::cout << "Found old message. Continuing. "
-                  << (node->get_clock()->now().seconds()
-                      - node->rtcm.obs.data->time.time - LEAP_SECONDS)
-                  << std::endl;
-        continue;     // todo: sorta hacky and not well tested
+      if (node->use_sim_time) {
+        // if using simulated time, check that msg times in the ballpark
+        auto diff = (long) node->get_clock()->now().seconds()
+            - (node->rtcm.obs.data->time.time - LEAP_SECONDS);
+        if (diff > 10) {
+          std::cout << "Current message time is " << diff
+                    << " seconds older than current simulated time so will skip to next message. "
+                    << std::endl;
+          continue;
+        } else if (diff < -100) {
+          std::cout << "Current message time is " << -diff
+                    << " seconds ahead of simulated time. Check sim_time started at correct value."
+                    << std::endl;
+        }
       }
 
       for (unsigned i = 0; i < node->rtcm.obs.n; ++i) {
@@ -76,14 +83,14 @@ int main(int argc, char **argv) {
         std::cout << (int) sat.first << ", ";
       std::cout << std::endl;
 
-      // get approximate start position through single-point (pseudo-range) positioning
-      sol_t init_solution;
+      // get approximate position through single-point (pseudo-range) positioning
+      sol_t code_solution;
       char error_msg[128];
       bool success = pntpos(node->rtcm.obs.data,
                             node->rtcm.obs.n,
                             &node->rtcm.nav,
                             &node->code_positioning_options,
-                            &init_solution,
+                            &code_solution,
                             nullptr,
                             nullptr,
                             error_msg);
@@ -91,9 +98,9 @@ int main(int argc, char **argv) {
       if (success) {
         // define the ENU origin if this is the first solution calculated
         if (!node->enu_origin_set) {
-          node->setEnuOrigin(&init_solution.rr[0]);
+          node->setEnuOrigin(&code_solution.rr[0]);
         }
-        node->updateCodePos(&init_solution.rr[0]);
+        node->updateCodePos(&code_solution.rr[0]);
       }
 
       // perform TDCP
@@ -138,15 +145,17 @@ int main(int argc, char **argv) {
                                      t_b_gps,
                                      sat_pos_vel_b);
 
-          // only rough receiver position needed so we reuse init_solution
-          sat_1a.estimateTroposphericDelay(sat_pos_vel_a, init_solution.rr);
-          sat_1b.estimateTroposphericDelay(sat_pos_vel_b, init_solution.rr);
+          // only rough receiver position needed so we reuse code_solution
+          sat_1a.estimateTroposphericDelay(sat_pos_vel_a, code_solution.rr);
+          sat_1b.estimateTroposphericDelay(sat_pos_vel_b, code_solution.rr);
         }
 
         // convert to UTC time for use by other packages
-        // todo: may lose precision here but shouldn't matter
-        meas_msg.t_a = 1e9 * (t_a_gps.time + t_a_gps.sec - LEAP_SECONDS);
-        meas_msg.t_b = 1e9 * (t_b_gps.time + t_b_gps.sec - LEAP_SECONDS);
+        const long sec_to_ns = 1e9;
+        meas_msg.t_a = (sec_to_ns * t_a_gps.time) + (long) (1e9 * t_a_gps.sec)
+            - (sec_to_ns * LEAP_SECONDS);
+        meas_msg.t_b = (sec_to_ns * t_b_gps.time) + (long) (1e9 * t_b_gps.sec)
+            - (sec_to_ns * LEAP_SECONDS);
 
         Eigen::Vector3d current_code = node->getCurrentCodePos();
         meas_msg.enu_pos.set__x(current_code.x());
@@ -163,7 +172,6 @@ int main(int argc, char **argv) {
         Eigen::Vector3d r_1a_b;
         node->getSatelliteVector(sat_1_id, t_a_gps, t_a_gps, r_1a_a);
         node->getSatelliteVector(sat_1_id, t_b_gps, t_a_gps, r_1a_b);
-        //todo: should check return values above
 
         for (unsigned int j = 1; j < matches.size(); ++j) {
           int sat_2_id = matches[j];
@@ -181,8 +189,8 @@ int main(int argc, char **argv) {
                                        t_b_gps,
                                        t_b_gps,
                                        sat_pos_vel_b);
-            sat_2a.estimateTroposphericDelay(sat_pos_vel_a, init_solution.rr);
-            sat_2b.estimateTroposphericDelay(sat_pos_vel_b, init_solution.rr);
+            sat_2a.estimateTroposphericDelay(sat_pos_vel_a, code_solution.rr);
+            sat_2b.estimateTroposphericDelay(sat_pos_vel_b, code_solution.rr);
           }
 
           double phi_dd =
@@ -195,45 +203,21 @@ int main(int argc, char **argv) {
           node->getSatelliteVector(sat_2_id, t_a_gps, t_a_gps, r_2a_a);
           node->getSatelliteVector(sat_2_id, t_b_gps, t_a_gps, r_2a_b);
 
-          cpo_interfaces::msg::SatPair pair_msg;
-          pair_msg.phi_measured = phi_dd;
-          pair_msg.r_1a_a.set__x(r_1a_a.x());   //todo: more efficient way?
-          pair_msg.r_1a_a.set__y(r_1a_a.y());
-          pair_msg.r_1a_a.set__z(r_1a_a.z());
-          pair_msg.r_1a_b.set__x(r_1a_b.x());
-          pair_msg.r_1a_b.set__y(r_1a_b.y());
-          pair_msg.r_1a_b.set__z(r_1a_b.z());
-          pair_msg.r_2a_a.set__x(r_2a_a.x());
-          pair_msg.r_2a_a.set__y(r_2a_a.y());
-          pair_msg.r_2a_a.set__z(r_2a_a.z());
-          pair_msg.r_2a_b.set__x(r_2a_b.x());
-          pair_msg.r_2a_b.set__y(r_2a_b.y());
-          pair_msg.r_2a_b.set__z(r_2a_b.z());
-
-          pair_msg.set__prn1(sat_1_id);
-          pair_msg.set__prn2(sat_2_id);
-
+          cpo_interfaces::msg::SatPair pair_msg = node->fillPairMsg(phi_dd,
+                                                                    r_1a_a,
+                                                                    r_1a_b,
+                                                                    r_2a_a,
+                                                                    r_2a_b,
+                                                                    sat_1_id,
+                                                                    sat_2_id);
           meas_msg.pairs.push_back(pair_msg);
         }
         // publish the pseudo-measurement to be used by the back-end
         if (node->use_sim_time) {
-          // todo: cutoff for older messages?
-
-          auto time_diff = node->get_clock()->now().seconds()
-              - meas_msg.t_b * 1e-9;     // todo: this may not be useful
-          if (abs(time_diff) > 30) {
-            std::cout << "Warning: " << time_diff
-                      << " second differential between sim_time and current measurement."
-                      << std::endl;
-            std::cout << "Simulation time:  " << std::setprecision(12)
-                      << node->get_clock()->now().seconds() << std::endl;
-            std::cout << "Measurement time: " << std::setprecision(12)
-                      << meas_msg.t_b * 1e-9 << std::endl;
-          }
-
+          // if using simulated time, wait for /clock to match timestamp b
           while (node->get_clock()->now().seconds() < meas_msg.t_b * 1e-9) {
             rclcpp::sleep_for(std::chrono::nanoseconds((long) 1e6));
-            rclcpp::spin_some(node);    // todo: may be better way
+            rclcpp::spin_some(node);
           }
         }
         node->publishTdcp(meas_msg);

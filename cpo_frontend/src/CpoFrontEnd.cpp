@@ -24,7 +24,8 @@ CpoFrontEnd::CpoFrontEnd()
   log_serial = this->get_parameter("log_serial").as_bool();
   std::string log_serial_filename =
       this->get_parameter("log_serial_filename").as_string();
-  log_serial_path = expandUser("~/CLionProjects/ros2-ws/src/cpo_frontend/data/") + log_serial_filename;
+  log_serial_path = expandUser("~/CLionProjects/ros2-ws/src/cpo_frontend/data/")
+      + log_serial_filename;
   rtcm_path = expandUser(this->get_parameter("data_path").as_string());
 
   use_sim_time = this->get_parameter("use_sim_time").as_bool();
@@ -167,4 +168,31 @@ void CpoFrontEnd::stepForward() {
   // move current code solution to previous and set current solution to zero
   prev_code_solution_ = curr_code_solution_;
   curr_code_solution_ = Eigen::Vector3d::Zero();
+}
+
+cpo_interfaces::msg::SatPair CpoFrontEnd::fillPairMsg(double phi_dd,
+                                                      const Eigen::Vector3d &r_1a_a,
+                                                      const Eigen::Vector3d &r_1a_b,
+                                                      const Eigen::Vector3d &r_2a_a,
+                                                      const Eigen::Vector3d &r_2a_b,
+                                                      int sat_1_id,
+                                                      int sat_2_id) {
+  cpo_interfaces::msg::SatPair pair_msg;
+  pair_msg.phi_measured = phi_dd;
+  pair_msg.r_1a_a.set__x(r_1a_a.x());
+  pair_msg.r_1a_a.set__y(r_1a_a.y());
+  pair_msg.r_1a_a.set__z(r_1a_a.z());
+  pair_msg.r_1a_b.set__x(r_1a_b.x());
+  pair_msg.r_1a_b.set__y(r_1a_b.y());
+  pair_msg.r_1a_b.set__z(r_1a_b.z());
+  pair_msg.r_2a_a.set__x(r_2a_a.x());
+  pair_msg.r_2a_a.set__y(r_2a_a.y());
+  pair_msg.r_2a_a.set__z(r_2a_a.z());
+  pair_msg.r_2a_b.set__x(r_2a_b.x());
+  pair_msg.r_2a_b.set__y(r_2a_b.y());
+  pair_msg.r_2a_b.set__z(r_2a_b.z());
+
+  pair_msg.set__prn1(sat_1_id);
+  pair_msg.set__prn2(sat_2_id);
+  return pair_msg;
 }

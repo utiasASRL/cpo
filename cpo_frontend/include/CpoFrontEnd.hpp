@@ -74,6 +74,15 @@ class CpoFrontEnd : public rclcpp::Node {
                            gtime_t &eph_time,
                            double *&rs) const;
 
+  /** \brief Fill in all fields of a SatPair.msg */
+  static cpo_interfaces::msg::SatPair fillPairMsg(double phi_dd,
+                                                  const Eigen::Vector3d &r_1a_a,
+                                                  const Eigen::Vector3d &r_1a_b,
+                                                  const Eigen::Vector3d &r_2a_a,
+                                                  const Eigen::Vector3d &r_2a_b,
+                                                  int sat_1_id,
+                                                  int sat_2_id);
+
   /** \brief The serial port that listens for GNSS measurements */
   std::shared_ptr<serial::Serial> serial_port;
 
