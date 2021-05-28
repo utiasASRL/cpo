@@ -52,9 +52,7 @@ class CpoBackEnd : public rclcpp::Node {
   void addMsgToWindow(const cpo_interfaces::msg::TDCP::SharedPtr &msg);
 
   /** \brief Saves latest pose information to a CSV file for later analysis */
-  void saveToFile(const lgmath::se3::Transformation &T_kg,
-                  double t_k,
-                  double t_k1 = 0) const;
+  void saveToFile(const lgmath::se3::Transformation &T_kg, double t_k) const;
 
   /** \brief Takes in Transforms and calls ROS publishers */
   void publishPose(const lgmath::se3::TransformationWithCovariance &T_ng);

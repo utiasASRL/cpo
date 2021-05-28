@@ -1,9 +1,11 @@
 #include <TdcpErrorEval.hpp>
 #include <UnicycleErrorEval.hpp>
 
-#include <cpo_backend/CpoBackEnd.hpp>
+#include <cpo_utilities.hpp>
+#include <CpoBackEnd.hpp>
 #include <fstream>
 #include <chrono>
+#include <filesystem>
 
 using Transformation = lgmath::se3::Transformation;
 using TransformationWithCovariance = lgmath::se3::TransformationWithCovariance;
@@ -352,9 +354,7 @@ void CpoBackEnd::publishPose(const TransformationWithCovariance &T_0g) {
   std::cout << "Message published! " << std::endl;
 }
 
-void CpoBackEnd::saveToFile(const Transformation &T_kg,
-                            double t_k,
-                            double t_k1) const {    //todo: sort this out too
+void CpoBackEnd::saveToFile(const Transformation &T_kg, double t_k) const {
   // append latest estimate to file
   std::ofstream outstream;
   outstream.open(results_path_, std::ofstream::out | std::ofstream::app);
@@ -364,7 +364,7 @@ void CpoBackEnd::saveToFile(const Transformation &T_kg,
   Eigen::Matrix4d T_sg = (tf_gps_vehicle_->evaluate() * T_kg).matrix();
 
   // save times and global position for easy plotting
-  outstream << std::setprecision(12) << t_k << ", " << t_k1 << ", ";
+  outstream << std::setprecision(12) << t_k << ", " << 0 << ", ";
   outstream << r_sg_g(0) << ", " << r_sg_g(1) << ", " << r_sg_g(2)
             << ", ";   // receiver position in ENU frame
   outstream << r_kg_g(0) << ", " << r_kg_g(1) << ", " << r_kg_g(2)
@@ -434,7 +434,7 @@ void CpoBackEnd::getParams() {
 
   window_size_ = this->get_parameter("window_size").as_int();
   lock_first_pose_ = this->get_parameter("lock_first_pose").as_bool();
-  results_path_ = this->get_parameter("results_path").as_string();
+  results_path_ = expandUser(this->get_parameter("results_path").as_string());
   steam_verbose_ = this->get_parameter("solver_verbose").as_bool();
   steam_max_iterations_ = this->get_parameter("solver_max_iterations").as_int();
   traj_timeout_limit_ = this->get_parameter("traj_timeout_limit").as_double();
@@ -474,6 +474,10 @@ void CpoBackEnd::initializeProblem() {
       outstream << std::setprecision(9) << enu_origin[0] << "," << enu_origin[1]
                 << "," << enu_origin[2] << std::endl;
       outstream.close();
+      if (!std::filesystem::exists(results_path_)) {
+        std::cout << "Warning: Results path " << results_path_
+                  << " does not exist." << std::endl;
+      }
     } else {
       std::cout << "Warning: new initial pose was set midway through run."
                 << "Estimates on either side of this time should not be compared."

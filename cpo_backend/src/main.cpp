@@ -1,4 +1,4 @@
-#include <cpo_backend/CpoBackEnd.hpp>
+#include <CpoBackEnd.hpp>
 
 int main(int argc, char **argv) {
 
