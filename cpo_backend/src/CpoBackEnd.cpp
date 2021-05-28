@@ -40,9 +40,11 @@ CpoBackEnd::CpoBackEnd() : Node("cpo_back_end") {
     this->declare_parameter("publish_delay", 5.0);
     publish_delay_ = this->get_parameter("publish_delay").as_double();
 
-    publish_timer_ =
-        this->create_wall_timer(std::chrono::milliseconds((long) period),
-                                std::bind(&CpoBackEnd::_timedCallback, this));
+    publish_timer_ = rclcpp::create_timer(this,
+                                          this->get_clock(),
+                                          std::chrono::milliseconds((long) period),
+                                          std::bind(&CpoBackEnd::_timedCallback,
+                                                    this));
   } else {
     publish_timer_ = nullptr;
   }
@@ -330,8 +332,11 @@ void CpoBackEnd::_timedCallback() {
     return;
   }
   if (t_k > t_last_msg && publish_delay_ > 0) {
-    //todo: figure out proper behaviour later
-    std::cout << "Choosing not to extrapolate. " << std::endl;
+    // if here we have set non-zero value to delay publishing so we don't have
+    // to extrapolate but there's a big enough observation gap we would have to
+    std::cout
+        << "Gap in TDCP observations. Choosing not to extrapolate trajectory. "
+        << std::endl;
     return;
   }
 
@@ -486,12 +491,10 @@ void CpoBackEnd::initializeProblem() {
 
 void CpoBackEnd::resetEstimator() {
   std::cout << "Clearing window and resetting the estimator." << std::endl;
-  for (int i = 0; i < 50; ++i) {
-    std::cout << "RESET ESTIMATOR " << i << std::endl;
-  }
   edges_.clear();
   trajectory_ = nullptr;
   init_pose_estimated_ = false;
+  std::cout << "WARNING: RESET ESTIMATOR !" << std::endl;
 }
 
 void CpoBackEnd::printCosts(bool final) {
@@ -521,32 +524,28 @@ void CpoBackEnd::addMsgToWindow(const cpo_interfaces::msg::TDCP::SharedPtr &msg)
     resetEstimator();
   }
 
-  // add latest message
+  // add latest message, setting initial values for states
   Transformation new_T_estimate;
+  Eigen::Matrix<double, 6, 1> new_vel_a;
+  Eigen::Matrix<double, 6, 1> new_vel_b;
   if (trajectory_ != nullptr) {
     Transformation T_b0 =
         trajectory_->getInterpPoseEval(steam::Time((int64_t) msg->t_b))->evaluate();
     Transformation T_a0 =
         trajectory_->getInterpPoseEval(steam::Time((int64_t) msg->t_a))->evaluate();
     new_T_estimate = T_b0 * T_a0.inverse();
+    new_vel_a = trajectory_->getVelocity(steam::Time((int64_t) msg->t_a));
+    new_vel_b = trajectory_->getVelocity(steam::Time((int64_t) msg->t_b));
   } else {
-    double dist_since_last = edges_.empty() ? 0 : (toEigenVec3d(msg->enu_pos)
-        - toEigenVec3d(edges_.back().msg.enu_pos)).norm();
-
-    // hacky  todo: something else
-    if (dist_since_last > 0)
-      dist_since_last = 0.9 * (msg->t_b - msg->t_a) * 1e-9;
-
+    // if we don't have a trajectory to extrapolate, try generic initial guesses
+    double dist_since_last = edges_.empty() ? 0.0 : 1.0;
     Eigen::Vector3d r_ba_est{dist_since_last, 0.0, 0.0};
     new_T_estimate = Transformation(Eigen::Matrix3d::Identity(), r_ba_est);
+    new_vel_a << -1.0, 0.0, 0.0, 0.0, 0.0, 0.0;
+    new_vel_b << -1.0, 0.0, 0.0, 0.0, 0.0, 0.0;
   }
 
-  // temporary way to initialize velocity state variable
-  Eigen::Matrix<double, 6, 1> plausible_vel;
-  plausible_vel << -0.9, 0.0, 0.0, 0.0, 0.0, 0.0;
-
-  edges_.emplace_back(CpoEdge{*msg, new_T_estimate, plausible_vel,
-                              plausible_vel});
+  edges_.emplace_back(CpoEdge{*msg, new_T_estimate, new_vel_a, new_vel_b});
 
   // if we have a full queue, discard the oldest msg
   while (edges_.size() > window_size_) {

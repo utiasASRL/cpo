@@ -21,7 +21,7 @@ class ClockServer : public rclcpp::Node {
     // first_meas_time defaults to start of feb15a sample dataset
     this->declare_parameter("first_meas_time", 1613417015);
     this->declare_parameter("playback_rate", 1);
-    this->declare_parameter("publish_rate", 20);
+    this->declare_parameter("publish_rate", 200);
 
     first_meas_time_ =
         this->get_parameter("first_meas_time").as_int() * (long) 1e9;
