@@ -1,22 +1,51 @@
 ## Carrier Phase Odometry
 
 ### Overview
-todo
+Carrier Phase Odometry (CPO) is a ROS2 project that uses raw GPS measurements from a single on-board receiver to estimate a robot's pose over time.
+By using time-differenced carrier phase (TDCP) measurements, it can more accurately reconstruct the relative motion of a robot than simply differencing traditional positioning solutions.
+TDCP borrows concepts from real-time kinetic (RTK) positioning but, importantly, does not require any additional receivers or communication links.
+
+Together, these packages form a full state estimation pipeline with raw GPS measurements going in the front end and ROS2 Pose msgs coming out the back end.
+Alternatively, you may want to use only the front end for preprocessing and combine the measurements with other sensors (e.g. visual odometry) in your own back end.
+
+To date, the project has only been tested on Ubuntu 20.04 with a NovAtel Smart6L GPS receiver.
+However, the code should be compatible with other versions of Linux and any receiver that can log over a serial port.
 
 ### Packages
-todo
 
 #### `cpo_frontend`
 
+This package acts as a driver and preprocessor for the carrier phase measurements.
+The input is RTCM1004 (GPS observables) and RTCM1019 (GPS ephemerides) messages logged over serial.
+These are standard RTCMv3 messages that the vast majority of modern GPS receivers are capable of logging.
+Instructions for configuring your receiver are [provided](#receiver-setup).
+In the meantime, sample data is provided in `cpo_frontend/data/rtcm3` you may use to experiment with.
+The packages support using ROS2's simulation time for offline testing.
+
+The output of this package is a stream of TDCP msgs, defined in `cpo_interface`, published on the `/tdcp` topic.
+These act as a pseudo-measurements pairing a set of satellites observed at two consecutive time points.
+Corrections to the carrier phase measurements (such as estimating the tropospheric delay) are also handled in this package.
 
 #### `cpo_backend`
 
+The back end package handles the state estimation.
+It subscribes to the `/tdcp` topic and publishes estimates on the `/cpo_enu` topic.
+These estimates are a full SE(3) pose estimate of the vehicle in the East-North-Up frame.
+The receiver position is converted to a vehicle pose via the fixed sensor-vehicle transform defined in the parameter file, and a nonholonomic motion model.
+By default, a pose estimate is published each time we receive a TDCP msg.
+Alternatively, if you set `fixed_rate_publish` to `true`, the estimated trajectory will be queried to give pose estimates at a fixed rate.
+As this is an odometry algorithm, its goal is to achieve relative accuracy (i.e. where am I compared to where I was a minute ago).
+Global accuracy (i.e. what is my longitude and latitude) is not improved by this method.
 
 #### `cpo_interfaces`
 
+This package defines 2 custom ROS2 msgs used as a pseudo-measurement to be passed between the front and back ends.
 
 #### `cpo_analysis`
 
+This package contains scripts to visualize and analyze the results of CPO.
+`listener` subscribes to the estimate messages while CPO is running and plots the positions live.
+`plot_file` is used to plot the integrated odometry afterwards as well as errors with respect to ground truth.
 
 ### Installation
 - Install dependencies
