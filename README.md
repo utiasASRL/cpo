@@ -17,7 +17,7 @@ However, the code should be compatible with other versions of Linux and any rece
 
 This package acts as a driver and preprocessor for the carrier phase measurements.
 The input is RTCM1004 (GPS observables) and RTCM1019 (GPS ephemerides) messages logged over serial.
-These are standard RTCMv3 messages that the vast majority of modern GPS receivers are capable of logging.
+These are standard [RTCMv3 messages](https://www.use-snip.com/kb/knowledge-base/rtcm-3-message-list/) that the vast majority of modern GPS receivers are capable of logging.
 Instructions for configuring your receiver are [provided](#receiver-setup).
 In the meantime, sample data is provided in `cpo_frontend/data/rtcm3` you may use to experiment with.
 The packages support using ROS2's simulation time for offline testing.
@@ -68,4 +68,34 @@ This package contains scripts to visualize and analyze the results of CPO.
 todo - test instructions
 
 ### Receiver Setup
-todo
+
+We provide here receiver configuration instructions tested on a NovAtel SMART6-L receiver.
+The exact commands required will vary for other receivers, but the strategy should be similar.
+Please consult your receiver's manual before altering its configuration.
+
+To interface with the `cpo_frontend` package, the receiver should log RTCM1004 and RTCM1019 messages over serial.
+(Other, less commonly used, RTCMv3 messages may also work but have not been tested).
+RTCM1004 provides the raw GPS measurements from all satellites seen by the receiver at a given time point (epoch).
+It should be logged at a consistent rate (e.g. 1 Hz).
+RTCM1019 messages provide the GPS satellite ephemerides (its trajectory through space).
+Each message gives this info for one of the satellites seen.
+They do not need to be logged as frequently (e.g. 0.2 Hz).
+See [this page](https://www.use-snip.com/kb/knowledge-base/rtcm-3-message-list/) for more information on RTCM messages.
+
+These messages are typically output by a fixed base station in RTK-positioning.
+For the NovAtel this means we must use the `movingbasestation enable` command to properly output them from the (moving) robot receiver.
+The instructions below configure this logging over the COM3 serial port (we often used COM1 and 2 for logging RTK ground truth during development), so you may adjust as needed for the COM you are using.
+We find it easiest to send these instructions via the [Windows NovAtel Connect GUI](https://novatel.com/products/firmware-options-pc-software/novatel-connect) but you should also be able to use a serial emulator like [picocom](https://linux.die.net/man/8/picocom).
+You may want to send an `freset` command (factory reset) before executing the instructions below but be careful as this will restore the default settings for all COMs.
+
+```
+com com3 57600 n 8 1 n off on
+interfacemode com3 novatel novatel
+movingbasestation enable
+log com3 rtcm1004b ontime 1
+log com3 rtcm1019b ontime 5
+saveconfig
+```
+
+In our hardware setup, the serial connection from the GPS is routed to a DB9 to USB connector before being plugged directly into the laptop running CPO.
+You may need to change the `port_path` parameter in `cpo_frontend` from the default `/dev/ttyUSB0` if you have other USB connections.
