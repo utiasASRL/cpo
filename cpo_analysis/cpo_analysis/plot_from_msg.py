@@ -15,9 +15,9 @@ plt.ion()  # make plotting interactive
 fig, ax = plt.subplots(figsize=[8, 4])
 plot = ax.scatter([], [], c='C5', label='Receiver code solutions', s=1.5)
 plot2 = ax.scatter([], [], c='C1', label='Vehicle position estimates', s=1.5)
-ax.set_xlim(-5, 5)
-ax.set_ylim(-5, 5)
-ax.set_title('Live Overhead View')
+ax.set_xlim(-10, 10)
+ax.set_ylim(-10, 10)
+ax.set_title('Live Overhead View (not aligned)')
 ax.set_xlabel('Easting (m)')
 ax.set_ylabel('Northing (m)')
 ax.legend(loc="upper right")
@@ -25,6 +25,10 @@ ax.set_aspect('equal')
 
 
 class TdcpSubscriber(Node):
+    """
+    Plots both the regular GPS (code) solutions and the Carrier Phase Odometry estimates in real-time.
+    *** Note: there will likely be some fixed offset between the two (both in position and time).
+    """
 
     def __init__(self):
         super().__init__('tdcp_subscriber')
@@ -42,6 +46,7 @@ class TdcpSubscriber(Node):
         self.enu_est_sub  # prevent unused variable warning
 
     def tdcp_callback(self, msg):
+        """Subscribes to TDCP msgs from frontend and plots code solutions."""
         self.tdcp_msg_count += 1
         print('Code solution     {0:.2f}, {1:.2f}, {2:.2f} [m] {3}'.format(msg.enu_pos.x, msg.enu_pos.y, msg.enu_pos.z,
                                                                            self.tdcp_msg_count))
@@ -51,11 +56,10 @@ class TdcpSubscriber(Node):
         array = plot.get_offsets()
         array = np.append(array, [point], axis=0)
         plot.set_offsets(array)
-        # ax.set_xlim(array[:, 0].min() - 5, array[:, 0].max() + 5)
-        # ax.set_ylim(array[:, 1].min() - 5, array[:, 1].max() + 5)
         fig.canvas.draw()
 
     def enu_est_callback(self, msg):
+        """Subscribes to PoseWithCovariance msgs from backend and plots 2D position."""
         self.enu_msg_count += 1
         print('Est. ENU position {0:.2f}, {1:.2f}, {2:.2f} [m] {3}'.format(msg.pose.position.x, msg.pose.position.y,
                                                                            msg.pose.position.z, self.enu_msg_count))
@@ -65,8 +69,8 @@ class TdcpSubscriber(Node):
         array = plot2.get_offsets()
         array = np.append(array, [point], axis=0)
         plot2.set_offsets(array)
-        ax.set_xlim(array[:, 0].min() - 5, array[:, 0].max() + 5)
-        ax.set_ylim(array[:, 1].min() - 5, array[:, 1].max() + 5)
+        ax.set_xlim(array[:, 0].min() - 10, array[:, 0].max() + 10)
+        ax.set_ylim(array[:, 1].min() - 10, array[:, 1].max() + 10)
         fig.canvas.draw()
 
     tdcp_msg_count = 0
