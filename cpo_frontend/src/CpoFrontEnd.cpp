@@ -14,7 +14,7 @@ CpoFrontEnd::CpoFrontEnd()
   this->declare_parameter("log_serial", true);
   this->declare_parameter("log_serial_filename", "log.bin");
   this->declare_parameter("data_path",
-                          "~/CLionProjects/gpso/data/rtcm3/feb15c.BIN");
+                          "~/CLionProjects/ros2-ws/src/cpo_frontend/data/rtcm3/feb15c.BIN");
   this->declare_parameter("approximate_time", -1);
   this->declare_parameter("enable_tropospheric_correction", true);
 

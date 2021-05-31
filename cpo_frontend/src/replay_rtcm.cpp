@@ -12,7 +12,7 @@ namespace fs = std::filesystem;
 int main() {
 
   // specify location of binary RTCM file
-  std::string data_directory = expandUser("~/CLionProjects/gpso/data/rtcm3/");
+  std::string data_directory = expandUser("~/CLionProjects/ros2-ws/src/cpo_frontend/data/rtcm3/");
   std::string data_file = "feb15c.BIN";
   fs::path data_path{data_directory + data_file};
   if (!fs::exists(data_path)) {
