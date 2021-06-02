@@ -258,7 +258,6 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
         std::cout
             << "Steam has failed to optimize the problem! This is an ERROR."
             << std::endl;
-        resetEstimator();
         return;
       } else {
         // yes: just a marginal problem, let's use what we got
@@ -271,7 +270,6 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
       std::cout
           << "Steam has encountered an LL^T decomposition error while optimizing! This is an ERROR."
           << std::endl;
-      resetEstimator();
       return;
     }
 
