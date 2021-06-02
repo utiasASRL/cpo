@@ -161,6 +161,10 @@ int main(int argc, char **argv) {
         meas_msg.enu_pos.set__x(current_code.x());
         meas_msg.enu_pos.set__y(current_code.y());
         meas_msg.enu_pos.set__z(current_code.z());
+        Eigen::Vector3d previous_code = node->getPreviousCodePos();
+        meas_msg.prev_enu_pos.set__x(previous_code.x());
+        meas_msg.prev_enu_pos.set__y(previous_code.y());
+        meas_msg.prev_enu_pos.set__z(previous_code.z());
 
         Eigen::Vector3d enu_origin = node->getGeodeticEnuOrigin();
         meas_msg.enu_origin.set__x(enu_origin.x());
