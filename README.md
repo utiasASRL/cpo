@@ -52,14 +52,25 @@ This package contains scripts to visualize and analyze the results of CPO.
   - CPO requires a ROS2 installation to overlay.
     The current release was developed and tested for the Foxy distribution.
     See the [ROS website](https://docs.ros.org/en/foxy/Installation.html) for installation instructions.
-  - `cpo_backend` uses [STEAM](https://github.com/utiasASRL/steam) as an engine for optimization.
-    Please follow the [instructions to install using CMake](https://github.com/utiasASRL/steam/blob/develop/INSTALL.md) to install the STEAM library and its dependencies.
-  - The dependencies of `cpo_frontend`, [RTKLIB](https://github.com/tomojitakasu/RTKLIB) and [serial](https://github.com/cottsay/serial) are included in the `deps` folder.
+  - `cpo_backend` uses [STEAM](https://github.com/utiasASRL/steam) as an engine for optimization and [lgmath](https://github.com/utiasASRL/lgmath) for handling Lie group operations.
+    Following the instructions below will download and install the ROS2 versions of STEAM and lgmath.
+  - The dependencies of `cpo_frontend`, [RTKLIB](https://github.com/tomojitakasu/RTKLIB) and [serial](https://github.com/cottsay/serial) are included in the `deps` folder as submodules.
 - Install CPO
   ```bash
   source ~/<path-to-ROS2-install>/ros_foxy/install/setup.bash
   mkdir -p ~/<cpo_workspace> && cd ~/<cpo_workspace>
-  git clone https://github.com/ben-congram/cpo.git
+  git clone https://github.com/utiasASRL/lgmath.git
+  cd lgmath
+  git checkout ros2
+  cd ~/<cpo_workspace>
+  git clone https://github.com/utiasASRL/steam.git
+  cd steam
+  git checkout ros2
+  cd ~/<cpo_workspace>
+  git clone https://github.com/ben-congram/cpo.git src
+  cd src
+  git submodule update --init --remote
+  cd ~/<cpo_workspace>
   colcon build --symlink-install
   source ~/<cpo_workspace>/install/setup.bash
   ```

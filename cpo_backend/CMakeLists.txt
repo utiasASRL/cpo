@@ -7,6 +7,7 @@ set(CMAKE_CXX_STANDARD 17)
 
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
+find_package(Boost REQUIRED COMPONENTS system thread)
 find_package(Eigen3 REQUIRED)
 find_package(lgmath REQUIRED)
 find_package(steam REQUIRED)
@@ -46,8 +47,8 @@ ament_target_dependencies(cpo_backend
         Eigen3
         rclcpp
         cpo_interfaces
-        #        lgmath
-        #        steam              # this line causing /targ_PATH set to NOTFOUND error
+        lgmath
+        steam
         )
 target_include_directories(cpo_backend PUBLIC
         ${EIGEN3_INCLUDE_DIR}
@@ -55,8 +56,6 @@ target_include_directories(cpo_backend PUBLIC
         ${steam_INCLUDE_DIRS}
         include)
 target_link_libraries(cpo_backend
-        lgmath
-        steam
         cpo_steam_extensions
         ${CMAKE_THREAD_LIBS_INIT})
 
