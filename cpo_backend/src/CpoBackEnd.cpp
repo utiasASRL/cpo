@@ -372,7 +372,7 @@ void CpoBackEnd::saveToFile(const Transformation &T_kg, double t_k) const {
   outstream << r_kg_g(0) << ", " << r_kg_g(1) << ", " << r_kg_g(2)
             << ", ";   // vehicle position in ENU frame
 
-  // save full transformations as well (** column major)
+  // save full transformations of receiver frame as well (** column major)
   auto T_sg_flat = std::vector<double>(T_sg.data(), T_sg.data() + 16);
   for (auto entry : T_sg_flat) outstream << entry << ",";
 
