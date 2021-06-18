@@ -1,6 +1,7 @@
 [submodule "deps/RTKLIB"]
 	path = deps/RTKLIB
 	url = https://github.com/ben-congram/RTKLIB
+	branch = rtklib_2.4.3
 [submodule "deps/serial"]
 	path = deps/serial
 	url = https://github.com/cottsay/serial.git
