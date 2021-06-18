@@ -4,3 +4,4 @@
 [submodule "deps/serial"]
 	path = deps/serial
 	url = https://github.com/cottsay/serial.git
+	branch = pure_cmake
