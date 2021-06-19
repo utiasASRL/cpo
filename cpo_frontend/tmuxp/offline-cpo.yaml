@@ -2,11 +2,11 @@
 session_name: cpo
 
 # The default start directory for the full session, ./ is this file's location
-start_directory: ./../../..
+start_directory: ./../..
 
 # Can run a script before tmuxp starts building the session
 shell_command_before:
-  - "source ./install/setup.bash"
+  - "source ./../install/setup.bash"
 
 # Add commands to bash history
 suppress_history: false
@@ -16,8 +16,8 @@ windows:
   - window_name: cpo_main
     layout: main-horizontal
     panes:
-      - ros2 run cpo_backend cpo_backend --ros-args --params-file ./src/cpo_backend/config/offline.yaml
-      - ros2 run cpo_frontend cpo_frontend --ros-args --params-file ./src/cpo_frontend/config/offline.yaml
+      - ros2 run cpo_backend cpo_backend --ros-args --params-file ./cpo_backend/config/offline.yaml
+      - ros2 run cpo_frontend cpo_frontend --ros-args --params-file ./cpo_frontend/config/offline.yaml
       - ros2 run cpo_analysis listener
       # - ros2 run cpo_frontend clock_server --ros-args -p first_meas_time:=1613417015 -p playback_rate:=10 # feb15a
       - ros2 run cpo_frontend clock_server --ros-args -p first_meas_time:=1613419580 -p playback_rate:=10 # feb15c

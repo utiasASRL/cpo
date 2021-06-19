@@ -2,11 +2,11 @@
 session_name: cpo
 
 # The default start directory for the full session, ./ is this file's location
-start_directory: ./../../..
+start_directory: ./../..
 
 # Can run a script before tmuxp starts building the session
 shell_command_before:
-  - "source ./install/setup.bash"
+  - "source ./../install/setup.bash"
 
 # Add commands to bash history
 suppress_history: false
@@ -16,7 +16,7 @@ windows:
   - window_name: cpo_main
     layout: main-horizontal
     panes:
-      - ros2 run cpo_backend cpo_backend --ros-args --params-file ./src/cpo_backend/config/online.yaml
-      - ros2 run cpo_frontend cpo_frontend --ros-args --params-file ./src/cpo_frontend/config/online.yaml -p log_serial_filename:=serial_$(date '+%F')_$(date '+%H')_$(date '+%M')_$(date '+%S').bin
+      - ros2 run cpo_backend cpo_backend --ros-args --params-file ./cpo_backend/config/online.yaml
+      - ros2 run cpo_frontend cpo_frontend --ros-args --params-file ./cpo_frontend/config/online.yaml -p log_serial_filename:=serial_$(date '+%F')_$(date '+%H')_$(date '+%M')_$(date '+%S').bin
       - ros2 run cpo_analysis listener
       - # ros2 bag record -o /home/ben/CLionProjects/ros2-ws/bagfiles/$(date '+%s') tdcp

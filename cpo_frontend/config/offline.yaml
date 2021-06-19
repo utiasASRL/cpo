@@ -9,8 +9,8 @@ cpo_front_end:
     baud: 57600
 
     # Unix time data is from. Set to negative to use live time
-#    approximate_time: 1613400000       # Feb.15/21
-    approximate_time: 1623890000       # June 16/21
+    approximate_time: 1613400000       # Feb.15/21
+    # approximate_time: 1623890000       # June 16/21
     #    approximate_time: -1       # now
     use_sim_time: true
 
