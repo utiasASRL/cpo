@@ -357,10 +357,68 @@ void CpoBackEnd::_timedCallback() {
   saveToFile(T_kg, t_k);
 }
 
-void CpoBackEnd::_queryCallback(const std::shared_ptr<QueryTrajectory::Request>,
+void CpoBackEnd::_queryCallback(const std::shared_ptr<QueryTrajectory::Request> request,
                                 std::shared_ptr<QueryTrajectory::Response> response) {
-  response->success = false;
-  response->message = "Query trajectory not yet implemented!";
+  if (first_window_ || !init_pose_estimated_ || trajectory_ == nullptr) {
+    response->success = false;
+    response->message = "CPO does not currently have a valid pose estimate.";
+    return;
+  }
+
+  // todo: do we need mutex on edges, trajectory?
+
+  // get times of current window
+  uint64_t t_start = edges_.front().msg.t_a;
+  uint64_t t_end = edges_.back().msg.t_b;
+
+  std::cout << std::setprecision(19) << "QC win t_a " << t_start
+            << std::endl;    // DEBUGGING
+  std::cout << "QC win t_b " << t_end << std::endl;    // DEBUGGING
+  std::cout << "QC req t_1 " << request->t_1 << std::endl;    // DEBUGGING
+  std::cout << "QC req t_2 " << request->t_2 << std::setprecision(6)
+            << std::endl;    // DEBUGGING
+
+  // error checking
+  if (request->t_1 > request->t_2) {
+    response->success = false;
+    response->message = "t_1 > t_2 but expected t_2 to be after t_1.";
+
+    std::cout << "response->message: " << response->message
+              << std::endl;  // debug
+    return;
+  } else if (request->t_1 < t_start) {
+    response->success = false;
+    response->message =
+        "Requested time before CPO window. Trajectory history has not been implemented.";
+
+    std::cout << "response->message: " << response->message
+              << std::endl;  // debug
+    return;
+  } else if (request->t_2 > t_end + (long) (traj_timeout_limit_ * 1e9)) {
+    response->success = false;
+    response->message = "t_2 too long after last GPS msg to trust trajectory.";
+
+    std::cout << "response->message: " << response->message
+              << std::endl;  // debug
+    return;
+  }
+
+  // requested times are reasonable so let's try to estimate a transform
+  auto T_10 =
+      trajectory_->getInterpPoseEval(steam::Time((int64_t) request->t_1));
+  auto T_20 =
+      trajectory_->getInterpPoseEval(steam::Time((int64_t) request->t_2));
+  lgmath::se3::TransformationWithCovariance
+      T_21 = steam::se3::composeInverse(T_20, T_10)->evaluate();
+
+  // todo: get covariance on this transform
+  std::cout << "T_21 " << T_21 << std::endl; // debug
+
+  response->tf_2_1 = toPoseMsg(T_21);
+
+  response->success = true;
+  response->message =
+      "Warning: Query trajectory not yet fully implemented! Covariance is not set";
 
 }
 
