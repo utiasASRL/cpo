@@ -297,9 +297,7 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
       double t_n = (double) edges_.back().msg.t_b * 1e-9;
       double t_0 = (double) edges_.front().msg.t_a * 1e-9;
       Transformation T_ng = statevars.back()->getValue() * init_pose_;
-#if 0 //todo - Eigen problem in toPoseMsg so disabling this
       publishPose(init_pose_);
-#endif
       saveToFile(init_pose_, t_0);
 
       std::cout << "Last time was: " << std::setprecision(12) << t_n;
@@ -349,9 +347,7 @@ void CpoBackEnd::_timedCallback() {
   TransformationWithCovariance T_kg = T_k0 * T_0g;
 
   // publish
-#if 0
   publishPose(T_kg);
-#endif
   saveToFile(T_kg, t_k);
 }
 
@@ -577,8 +573,13 @@ geometry_msgs::msg::PoseWithCovariance CpoBackEnd::toPoseMsg(
   if (!T.covarianceSet())
     T.setZeroCovariance();
 
+  Eigen::Matrix<double, 6, 6> T_cov = T.cov();
   std::array<double, 36> temp{};
-  Eigen::Matrix<double, 6, 6>::Map(temp.data()) = T.cov();
+  for (int i = 0; i < 6; ++i) {
+    for (int j = 0; j < 6; ++j) {
+      temp[6*i + j] = T_cov(i, j);
+    }
+  }
   msg.set__covariance(temp);
 
   return msg;

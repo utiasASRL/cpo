@@ -6,7 +6,7 @@ start_directory: ./../..
 
 # Can run a script before tmuxp starts building the session
 shell_command_before:
-  - "source ./install/setup.bash"
+  - "source ./../install/setup.bash"
 
 # Add commands to bash history
 suppress_history: false
