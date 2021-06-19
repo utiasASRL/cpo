@@ -1,0 +1,8 @@
+uint64 t_1                                  # time 1 in nanoseconds (UTC)
+uint64 t_2                                  # time 2 in nanoseconds (UTC)
+
+---
+
+bool success                                # whether we successfully calculated a transform
+string message                              # error message
+geometry_msgs/PoseWithCovariance tf_2_1     # transformation estimate from time 1 to time 2 (T_21)

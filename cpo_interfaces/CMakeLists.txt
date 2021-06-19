@@ -17,8 +17,12 @@ set(MSG_SRC
         "msg/TDCP.msg"
         "msg/SatPair.msg"
         )
+set(SRV_SRC
+        "srv/QueryTrajectory.srv"
+        )
 rosidl_generate_interfaces(${PROJECT_NAME}
         ${MSG_SRC}
+        ${SRV_SRC}
         DEPENDENCIES builtin_interfaces geometry_msgs
         )
 

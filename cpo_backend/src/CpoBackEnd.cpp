@@ -50,6 +50,12 @@ CpoBackEnd::CpoBackEnd() : Node("cpo_back_end") {
     publish_timer_ = nullptr;
   }
 
+  query_traj_srv_ = this->create_service<QueryTrajectory>("query_trajectory",
+                                                          std::bind(&CpoBackEnd::_queryCallback,
+                                                                    this,
+                                                                    std::placeholders::_1,
+                                                                    std::placeholders::_2));
+
   // set up receiver-vehicle transform
   this->declare_parameter("r_veh_gps_inv",
                           std::vector<double>{-0.60, 0.00, -0.52});
@@ -351,6 +357,13 @@ void CpoBackEnd::_timedCallback() {
   saveToFile(T_kg, t_k);
 }
 
+void CpoBackEnd::_queryCallback(const std::shared_ptr<QueryTrajectory::Request>,
+                                std::shared_ptr<QueryTrajectory::Response> response) {
+  response->success = false;
+  response->message = "Query trajectory not yet implemented!";
+
+}
+
 void CpoBackEnd::publishPose(const TransformationWithCovariance &T_0g) {
   geometry_msgs::msg::PoseWithCovariance enu_pose_msg = toPoseMsg(T_0g);
   enu_publisher_->publish(enu_pose_msg);
@@ -401,7 +414,7 @@ void CpoBackEnd::getParams() {
   this->declare_parameter("roll_cov_ang3", 1.0);
   this->declare_parameter("window_size", 10);
   this->declare_parameter("lock_first_pose", true);
-  this->declare_parameter("results_path", "~/CLionProjects/ros2-ws/src/cpo_analysis/data/estimates/cpo.csv");
+  this->declare_parameter("results_path", "~/cpo.csv");
   this->declare_parameter("solver_verbose", false);
   this->declare_parameter("solver_max_iterations", 5);
   this->declare_parameter("traj_timeout_limit", 5.0);
@@ -577,7 +590,7 @@ geometry_msgs::msg::PoseWithCovariance CpoBackEnd::toPoseMsg(
   std::array<double, 36> temp{};
   for (int i = 0; i < 6; ++i) {
     for (int j = 0; j < 6; ++j) {
-      temp[6*i + j] = T_cov(i, j);
+      temp[6 * i + j] = T_cov(i, j);
     }
   }
   msg.set__covariance(temp);

@@ -6,8 +6,11 @@
 #include <geometry_msgs/msg/pose_with_covariance.hpp>
 
 #include <cpo_interfaces/msg/tdcp.hpp>
+#include <cpo_interfaces/srv/query_trajectory.hpp>
 
 #include <deque>
+
+using QueryTrajectory = cpo_interfaces::srv::QueryTrajectory;
 
 struct CpoEdge {
   cpo_interfaces::msg::TDCP msg;    /// the TDCP msg spanning this edge
@@ -42,6 +45,10 @@ class CpoBackEnd : public rclcpp::Node {
   /** \brief Timed callback to query trajectory if available and publish pose estimate */
   void _timedCallback();
 
+  /** \brief Queries current trajectory and returns transform if valid */
+  void _queryCallback(const std::shared_ptr<QueryTrajectory::Request> request,
+                      std::shared_ptr<QueryTrajectory::Response> response);
+
   /** \brief Resets loss functions, cost terms, etc. at top of TDCP callback */
   void initializeProblem();
 
@@ -73,8 +80,11 @@ class CpoBackEnd : public rclcpp::Node {
   /** \brief Optionally delay output of pose in timed callback so not always extrapolating */
   double publish_delay_;
 
-  /** Timer to publish odometry estimates at a fixed rate */
+  /** \brief Timer to publish odometry estimates at a fixed rate */
   rclcpp::TimerBase::SharedPtr publish_timer_;
+
+  /** \brief Service to return the estimated relative transform between two times */
+  rclcpp::Service<QueryTrajectory>::SharedPtr query_traj_srv_;
 
   /** \brief The fixed sensor-vehicle transform. Allows us to do estimation in the vehicle frame */
   steam::se3::FixedTransformEvaluator::ConstPtr tf_gps_vehicle_;
