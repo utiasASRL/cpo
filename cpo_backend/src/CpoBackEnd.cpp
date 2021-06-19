@@ -6,6 +6,7 @@
 #include <fstream>
 #include <chrono>
 #include <filesystem>
+#include <Eigen/Core>
 
 using Transformation = lgmath::se3::Transformation;
 using TransformationWithCovariance = lgmath::se3::TransformationWithCovariance;
@@ -29,7 +30,7 @@ CpoBackEnd::CpoBackEnd() : Node("cpo_back_end") {
       this->create_publisher<geometry_msgs::msg::PoseWithCovariance>("cpo_enu",
                                                                      10);
 
-  this->declare_parameter("fixed_rate_publish", true);
+  this->declare_parameter("fixed_rate_publish", false);
   fixed_rate_publish_ = this->get_parameter("fixed_rate_publish").as_bool();
 
   if (fixed_rate_publish_) {
@@ -296,7 +297,9 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
       double t_n = (double) edges_.back().msg.t_b * 1e-9;
       double t_0 = (double) edges_.front().msg.t_a * 1e-9;
       Transformation T_ng = statevars.back()->getValue() * init_pose_;
+#if 0 //todo - Eigen problem in toPoseMsg so disabling this
       publishPose(init_pose_);
+#endif
       saveToFile(init_pose_, t_0);
 
       std::cout << "Last time was: " << std::setprecision(12) << t_n;
@@ -346,7 +349,9 @@ void CpoBackEnd::_timedCallback() {
   TransformationWithCovariance T_kg = T_k0 * T_0g;
 
   // publish
+#if 0
   publishPose(T_kg);
+#endif
   saveToFile(T_kg, t_k);
 }
 
@@ -400,7 +405,7 @@ void CpoBackEnd::getParams() {
   this->declare_parameter("roll_cov_ang3", 1.0);
   this->declare_parameter("window_size", 10);
   this->declare_parameter("lock_first_pose", true);
-  this->declare_parameter("results_path");
+  this->declare_parameter("results_path", "~/CLionProjects/ros2-ws/src/cpo_analysis/data/estimates/cpo.csv");
   this->declare_parameter("solver_verbose", false);
   this->declare_parameter("solver_max_iterations", 5);
   this->declare_parameter("traj_timeout_limit", 5.0);

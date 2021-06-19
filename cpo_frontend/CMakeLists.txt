@@ -1,8 +1,9 @@
-cmake_minimum_required(VERSION 3.14)
+cmake_minimum_required(VERSION 3.16)
 project(cpo_frontend)
 
 set(CMAKE_CXX_STANDARD 17)
-
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+add_compile_options(-march=native -O3 -pthread -Wall -Wextra)
 add_compile_options(-DTRACE)            # enables 'trace' debugging in RTKLIB
 
 find_package(ament_cmake REQUIRED)
