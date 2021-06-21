@@ -359,13 +359,12 @@ void CpoBackEnd::_timedCallback() {
 
 void CpoBackEnd::_queryCallback(const std::shared_ptr<QueryTrajectory::Request> request,
                                 std::shared_ptr<QueryTrajectory::Response> response) {
-  if (first_window_ || !init_pose_estimated_ || trajectory_ == nullptr) {
+  if (first_window_ || !init_pose_estimated_ || trajectory_ == nullptr
+      || solver_ == nullptr) {
     response->success = false;
     response->message = "CPO does not currently have a valid pose estimate.";
     return;
   }
-
-  // todo: do we need mutex on edges, trajectory?
 
   // get times of current window
   uint64_t t_start = edges_.front().msg.t_a;
@@ -404,22 +403,31 @@ void CpoBackEnd::_queryCallback(const std::shared_ptr<QueryTrajectory::Request> 
   }
 
   // requested times are reasonable so let's try to estimate a transform
-  auto T_10 =
-      trajectory_->getInterpPoseEval(steam::Time((int64_t) request->t_1));
-  auto T_20 =
-      trajectory_->getInterpPoseEval(steam::Time((int64_t) request->t_2));
-  lgmath::se3::TransformationWithCovariance
-      T_21 = steam::se3::composeInverse(T_20, T_10)->evaluate();
+  lgmath::se3::TransformationWithCovariance T_10 =
+      trajectory_->getInterpPoseEval(steam::Time((int64_t) request->t_1))->evaluate();
+  lgmath::se3::TransformationWithCovariance T_20 =
+      trajectory_->getInterpPoseEval(steam::Time((int64_t) request->t_2))->evaluate();
 
-  // todo: get covariance on this transform
+  auto gn_solver =
+      std::dynamic_pointer_cast<steam::GaussNewtonSolverBase>(solver_);
+  trajectory_->setSolver(gn_solver);
+
+  // todo - add covariance interpolation into Steam branch. This is just using closest state
+  auto T_10_cov_rough =
+      trajectory_->getCovariance(steam::Time((int64_t) request->t_1));
+  auto T_20_cov_rough =
+      trajectory_->getCovariance(steam::Time((int64_t) request->t_2));
+  // note - missing off-diagonal elements here so this only approximation
+  T_10.setCovariance(T_10_cov_rough.block<6, 6>(0, 0));
+  T_20.setCovariance(T_20_cov_rough.block<6, 6>(0, 0));
+  lgmath::se3::TransformationWithCovariance T_21 = T_20 / T_10;
+
   std::cout << "T_21 " << T_21 << std::endl; // debug
 
   response->tf_2_1 = toPoseMsg(T_21);
 
   response->success = true;
-  response->message =
-      "Warning: Query trajectory not yet fully implemented! Covariance is not set";
-
+  response->message = "Warning: Not fully implemented! Don't trust covariance";
 }
 
 void CpoBackEnd::publishPose(const TransformationWithCovariance &T_0g) {
