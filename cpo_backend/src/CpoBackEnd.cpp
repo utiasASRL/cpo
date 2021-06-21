@@ -630,12 +630,12 @@ void CpoBackEnd::addMsgToWindow(const cpo_interfaces::msg::TDCP::SharedPtr &msg)
 geometry_msgs::msg::PoseWithCovariance CpoBackEnd::toPoseMsg(
     TransformationWithCovariance T) {
   Eigen::Quaterniond q(T.C_ba());
-  Eigen::Vector3d r_ba_ina = T.r_ba_ina();
+  Eigen::Vector3d r_ab_inb = T.r_ab_inb();
 
   geometry_msgs::msg::PoseWithCovariance msg;
-  msg.pose.position.set__x(r_ba_ina[0]);
-  msg.pose.position.set__y(r_ba_ina[1]);
-  msg.pose.position.set__z(r_ba_ina[2]);
+  msg.pose.position.set__x(r_ab_inb[0]);
+  msg.pose.position.set__y(r_ab_inb[1]);
+  msg.pose.position.set__z(r_ab_inb[2]);
   msg.pose.orientation.set__x(q.x());
   msg.pose.orientation.set__y(q.y());
   msg.pose.orientation.set__z(q.z());
@@ -648,7 +648,7 @@ geometry_msgs::msg::PoseWithCovariance CpoBackEnd::toPoseMsg(
   std::array<double, 36> temp{};
   for (int i = 0; i < 6; ++i) {
     for (int j = 0; j < 6; ++j) {
-      temp[6 * i + j] = T_cov(i, j);
+      temp[6*i + j] = T_cov(i, j);
     }
   }
   msg.set__covariance(temp);
