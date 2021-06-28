@@ -407,27 +407,18 @@ void CpoBackEnd::_queryCallback(const std::shared_ptr<QueryTrajectory::Request> 
       trajectory_->getInterpPoseEval(steam::Time((int64_t) request->t_1))->evaluate();
   lgmath::se3::TransformationWithCovariance T_20 =
       trajectory_->getInterpPoseEval(steam::Time((int64_t) request->t_2))->evaluate();
+  lgmath::se3::TransformationWithCovariance T_21 = T_20 / T_10;
 
   auto gn_solver =
       std::dynamic_pointer_cast<steam::GaussNewtonSolverBase>(solver_);
   trajectory_->setSolver(gn_solver);
 
-  // todo - add covariance interpolation into Steam branch. This is just using closest state
-  auto T_10_cov_rough =
-      trajectory_->getCovariance(steam::Time((int64_t) request->t_1));
-  auto T_20_cov_rough =
-      trajectory_->getCovariance(steam::Time((int64_t) request->t_2));
-  // note - missing off-diagonal elements here so this only approximation
-  T_10.setCovariance(T_10_cov_rough.block<6, 6>(0, 0));
-  T_20.setCovariance(T_20_cov_rough.block<6, 6>(0, 0));
-  lgmath::se3::TransformationWithCovariance T_21 = T_20 / T_10;
-
-  std::cout << "T_21 " << T_21 << std::endl; // debug
-
+  auto Cov_21 = trajectory_->getRelativePoseCovariance(steam::Time((int64_t) request->t_1), steam::Time((int64_t) request->t_2));
+  T_21.setCovariance(Cov_21);
   response->tf_2_1 = toPoseMsg(T_21);
 
   response->success = true;
-  response->message = "Warning: Not fully implemented! Don't trust covariance";
+  response->message = "Warning: query_trajectory not fully tested! Don't trust covariance";
 }
 
 void CpoBackEnd::publishPose(const TransformationWithCovariance &T_0g) {
