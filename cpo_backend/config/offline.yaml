@@ -1,7 +1,7 @@
 cpo_back_end:
   ros__parameters:
     results_path: "~/CLionProjects/ros2-ws/src/cpo_analysis/data/estimates/cpo.csv"
-    window_size: 10
+    window_size: 20
     lock_first_pose: true
     fixed_rate_publish: false
     publish_frequency: 4.0

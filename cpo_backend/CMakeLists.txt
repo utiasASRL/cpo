@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 add_compile_options(-march=native -O3 -Wall -Wno-long-long -pedantic -Wno-unused-function)
 
-# add_definitions(-DSTEAM_DEFAULT_NUM_OPENMP_THREADS=1)       # can be used to make deterministic
+add_definitions(-DSTEAM_DEFAULT_NUM_OPENMP_THREADS=1)       # can be used to make deterministic
 
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)

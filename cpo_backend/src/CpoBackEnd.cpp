@@ -367,7 +367,11 @@ void CpoBackEnd::_queryCallback(const std::shared_ptr<QueryTrajectory::Request> 
   }
 
   // get times of current window
+#if 0
   uint64_t t_start = edges_.front().msg.t_a;
+#else
+  uint64_t t_start = edges_.front().msg.t_b;  // todo: currently have problems when one side of interpolation is locked
+#endif
   uint64_t t_end = edges_.back().msg.t_b;
 
   std::cout << std::setprecision(19) << "QC win t_a " << t_start
