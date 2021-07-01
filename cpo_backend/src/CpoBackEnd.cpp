@@ -413,7 +413,7 @@ void CpoBackEnd::_queryCallback(const std::shared_ptr<QueryTrajectory::Request> 
       std::dynamic_pointer_cast<steam::GaussNewtonSolverBase>(solver_);
   trajectory_->setSolver(gn_solver);
 
-  auto Cov_21 = trajectory_->getRelativePoseCovariance(steam::Time((int64_t) request->t_1), steam::Time((int64_t) request->t_2));
+  Eigen::Matrix<double, 6, 6> Cov_21 = trajectory_->getRelativePoseCovariance(steam::Time((int64_t) request->t_1), steam::Time((int64_t) request->t_2));
   T_21.setCovariance(Cov_21);
   response->tf_2_1 = toPoseMsg(T_21);
 
