@@ -3,6 +3,7 @@ from rclpy.node import Node
 
 import matplotlib.pyplot as plt
 import numpy as np
+from scipy.spatial.transform import Rotation as R
 import seaborn as sns
 
 from cpo_interfaces.msg import TDCP
@@ -61,9 +62,15 @@ class TdcpSubscriber(Node):
     def enu_est_callback(self, msg):
         """Subscribes to PoseWithCovariance msgs from backend and plots 2D position."""
         self.enu_msg_count += 1
-        print('Est. ENU position {0:.2f}, {1:.2f}, {2:.2f} [m] {3}'.format(msg.pose.position.x, msg.pose.position.y,
-                                                                           msg.pose.position.z, self.enu_msg_count))
-        point = (msg.pose.position.x, msg.pose.position.y)
+
+        r_ab_inb = np.array([msg.pose.position.x, msg.pose.position.y, msg.pose.position.z])
+        C_ba = R.from_quat(
+            [msg.pose.orientation.x, msg.pose.orientation.y, msg.pose.orientation.z, msg.pose.orientation.w])
+        r_ba_ina = -1 * C_ba.as_matrix().transpose() @ r_ab_inb.transpose()
+
+        print('Est. ENU position {0:.2f}, {1:.2f}, {2:.2f} [m] {3}'.format(r_ba_ina[0], r_ba_ina[1],
+                                                                           r_ba_ina[2], self.enu_msg_count))
+        point = (r_ba_ina[0], r_ba_ina[1])
 
         # plot East-North estimates as we go
         array = plot2.get_offsets()
