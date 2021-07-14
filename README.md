@@ -55,6 +55,7 @@ This package contains scripts to visualize and analyze the results of CPO.
 - Install CPO and dependencies
   - `cpo_backend` uses [STEAM](https://github.com/utiasASRL/steam) as an engine for optimization and [lgmath](https://github.com/utiasASRL/lgmath) for handling Lie group operations.
     Following the instructions below will download and install the ROS2 versions of STEAM and lgmath.
+    Note: the query trajectory service currently requires the `ros2-traj-covariance` branch of STEAM.
   - The dependencies of `cpo_frontend`, [RTKLIB](https://github.com/tomojitakasu/RTKLIB) and [serial](https://github.com/cottsay/serial) are included in the `deps` folder as submodules.
   ```bash
   source ~/<path-to-ROS2-install>/ros_foxy/install/setup.bash
@@ -65,7 +66,7 @@ This package contains scripts to visualize and analyze the results of CPO.
   cd ~/<cpo_workspace>
   git clone https://github.com/utiasASRL/steam.git
   cd steam
-  git checkout ros2
+  git checkout ros2-traj-covariance
   cd ~/<cpo_workspace>
   git clone https://github.com/ben-congram/cpo.git src
   cd src
