@@ -247,7 +247,7 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
     }
 
     // print initial costs (for debugging/development)
-    printCosts(false);
+//    printCosts(false);
 
     // setup solver and optimize
     steam::DoglegGaussNewtonSolver::Params params;
@@ -281,7 +281,7 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
     }
 
     // print final costs (for debugging/development)
-    printCosts(true);
+//    printCosts(true);
 
     // update with optimized transforms
     for (uint i = 0; i < edges_.size(); ++i) {
@@ -290,6 +290,13 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
       edges_[i].T_ba.reproject(true);
       edges_[i].v_a = traj_states.at(i).getVelocity()->getValue();
       edges_[i].v_b = traj_states.at(i + 1).getVelocity()->getValue();
+//
+//      // want to see if they change much...
+//      if (i < 40) {
+//        Transformation T_ig = statevars[i + 1]->getValue() * init_pose_;
+//        std::cout << "t_i: " << std::setprecision(12) << traj_states.at(i + 1).getTime().seconds() << std::setprecision(6) << " r_" << (i + 1) << "g_g  "
+//                  << T_ig.r_ba_ina().transpose() << std::endl;
+//      }
     }
 
     // update our orientation estimate
@@ -303,8 +310,33 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
       double t_n = (double) edges_.back().msg.t_b * 1e-9;
       double t_0 = (double) edges_.front().msg.t_a * 1e-9;
       Transformation T_ng = statevars.back()->getValue() * init_pose_;
+
+      Transformation T_11g = statevars[11]->getValue() * init_pose_;
+      double t_11 = traj_states[11].getTime().seconds();
+
       publishPose(init_pose_);
-      saveToFile(init_pose_, t_0);
+//      saveToFile(init_pose_, t_0);
+      saveToFile(T_11g, t_11);
+      saveHalfToFile(t_n - 1.0);
+
+//      // print edge values for comparison
+//      for (uint i = 0; i < 10; ++i) {
+//        std::cout << "edge " << i << std::setprecision(12) << " t_a: "
+//                  << edges_[i].msg.t_a << " t_b: " << edges_[i].msg.t_b
+//                  << std::setprecision(6) << "  T_ba: " << edges_[i].T_ba
+//                  << std::endl;
+//      }
+
+      for (uint i = 0; i < statevars.size(); ++i) {
+
+        Transformation T_ig = statevars[i]->getValue() * init_pose_;
+        double yaw = atan2(T_ig.C_ba()(1,0), T_ig.C_ba()(0,0));
+
+        std::cout << "statevar " << i << std::setprecision(12) << " t: "
+                  << traj_states[i].getTime().seconds() <<std::setprecision(6)
+                  << "  yaw: " << yaw
+                  << std::endl;
+      }
 
       std::cout << "Last time was: " << std::setprecision(12) << t_n;
       std::cout << "    Time zero was: " << t_0 << std::setprecision(6)
@@ -374,11 +406,11 @@ void CpoBackEnd::_queryCallback(const std::shared_ptr<QueryTrajectory::Request> 
 #endif
   uint64_t t_end = edges_.back().msg.t_b;
 
-  std::cout << std::setprecision(19) << "QC win t_a " << t_start
+  std::cout << std::setprecision(19) << "QC win t_a " << t_start * 1e-9
             << std::endl;    // DEBUGGING
-  std::cout << "QC win t_b " << t_end << std::endl;    // DEBUGGING
-  std::cout << "QC req t_1 " << request->t_1 << std::endl;    // DEBUGGING
-  std::cout << "QC req t_2 " << request->t_2 << std::setprecision(6)
+  std::cout << "QC win t_b " << t_end * 1e-9 << std::endl;    // DEBUGGING
+  std::cout << "QC req t_1 " << request->t_1 * 1e-9 << std::endl;    // DEBUGGING
+  std::cout << "QC req t_2 " << request->t_2 * 1e-9 << std::setprecision(6)
             << std::endl;    // DEBUGGING
 
   // error checking
@@ -421,6 +453,8 @@ void CpoBackEnd::_queryCallback(const std::shared_ptr<QueryTrajectory::Request> 
   T_21.setCovariance(Cov_21);
   response->tf_2_1 = toPoseMsg(T_21);
 
+  std::cout << "Response T_21: " << T_21 << std::endl;
+
   response->success = true;
   response->message = "Warning: query_trajectory not fully tested! Don't trust covariance";
 }
@@ -439,6 +473,9 @@ void CpoBackEnd::saveToFile(const Transformation &T_kg, double t_k) const {
   const Eigen::Vector3d r_kg_g = T_kg.r_ba_ina();     // vehicle position
   Eigen::Vector3d r_sg_g = (tf_gps_vehicle_->evaluate() * T_kg).r_ba_ina();
   Eigen::Matrix4d T_sg = (tf_gps_vehicle_->evaluate() * T_kg).matrix();
+  Eigen::Matrix4d T_vg = T_kg.matrix();
+
+  std::cout << std::setprecision(12) << "t_k " << t_k << std::setprecision(6) << " T_kg  \n" << T_kg.matrix() << std::endl;
 
   // save times and global position for easy plotting
   outstream << std::setprecision(12) << t_k << ", " << 0 << ", ";
@@ -447,12 +484,44 @@ void CpoBackEnd::saveToFile(const Transformation &T_kg, double t_k) const {
   outstream << r_kg_g(0) << ", " << r_kg_g(1) << ", " << r_kg_g(2)
             << ", ";   // vehicle position in ENU frame
 
-  // save full transformations of receiver frame as well (** column major)
+  // save full transformations of receiver frame (** column major)
   auto T_sg_flat = std::vector<double>(T_sg.data(), T_sg.data() + 16);
   for (auto entry : T_sg_flat) outstream << entry << ",";
 
+  // save full transformations of vehicle frame as well (** column major)
+  auto T_vg_flat = std::vector<double>(T_vg.data(), T_vg.data() + 16);
+  for (auto entry : T_vg_flat) outstream << entry << ",";
+
   outstream << std::endl;
   outstream.close();
+}
+
+void CpoBackEnd::saveHalfToFile(double t_k) {
+  // append latest estimate to file
+  std::ofstream outstream;
+  outstream.open("/home/ben/Desktop/half-cpo.csv", std::ofstream::out | std::ofstream::app);
+
+  lgmath::se3::TransformationWithCovariance T_k = trajectory_->getInterpPoseEval(steam::Time(t_k))->evaluate();
+  lgmath::se3::TransformationWithCovariance T_k1;
+  if (last_saved_time_ > 0)
+    T_k1 = trajectory_->getInterpPoseEval(steam::Time(last_saved_time_))->evaluate();
+  lgmath::se3::TransformationWithCovariance T_k_k1 = T_k / T_k1;
+
+  Eigen::Matrix4d T_k_k1_veh = T_k_k1.matrix();
+
+  std::cout << std::setprecision(12) << "t_k " << t_k << std::setprecision(6) << " T_k_k1  \n" << T_k_k1.matrix() << std::endl;
+
+  // save times and global position for easy plotting
+  outstream << std::setprecision(12) << t_k << ", " << last_saved_time_ << ", ";
+
+  // save full relative transformations of vehicle frame
+  auto T_flat = std::vector<double>(T_k_k1_veh.data(), T_k_k1_veh.data() + 16);
+  for (auto entry : T_flat) outstream << entry << ",";
+
+  outstream << std::endl;
+  outstream.close();
+
+  last_saved_time_ = t_k;
 }
 
 void CpoBackEnd::getParams() {

@@ -61,6 +61,8 @@ class CpoBackEnd : public rclcpp::Node {
   /** \brief Saves latest pose information to a CSV file for later analysis */
   void saveToFile(const lgmath::se3::Transformation &T_kg, double t_k) const;
 
+  void saveHalfToFile(double t_k);
+
   /** \brief Takes in Transforms and calls ROS publishers */
   void publishPose(const lgmath::se3::TransformationWithCovariance &T_ng);
 
@@ -157,5 +159,8 @@ class CpoBackEnd : public rclcpp::Node {
   double traj_timeout_limit_;
 
   bool first_window_ = true;
+
+  // temporary for debugging
+  double last_saved_time_ = -1;
 
 };
