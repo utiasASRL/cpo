@@ -1,7 +1,7 @@
 cpo_back_end:
   ros__parameters:
     results_path: "~/CLionProjects/ros2-ws/src/cpo_analysis/data/estimates/cpo-online.csv"
-    window_size: 20
+    window_size: 40
     lock_first_pose: true
     fixed_rate_publish: false
     publish_frequency: 4.0
@@ -21,7 +21,7 @@ cpo_back_end:
     lin_acc_std_dev_z: 0.1
     ang_acc_std_dev_x: 0.01
     ang_acc_std_dev_y: 0.01
-    ang_acc_std_dev_z: 0.1
+    ang_acc_std_dev_z: 1.0
     prior_cov_x: 0.001
     prior_cov_y: 0.001
     prior_cov_z: 0.001
