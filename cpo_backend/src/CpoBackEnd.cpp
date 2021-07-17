@@ -327,15 +327,17 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
 //                  << std::endl;
 //      }
 
+      double prev_yaw = 0;
       for (uint i = 0; i < statevars.size(); ++i) {
 
         Transformation T_ig = statevars[i]->getValue() * init_pose_;
         double yaw = atan2(T_ig.C_ba()(1,0), T_ig.C_ba()(0,0));
 
-        std::cout << "statevar " << i << std::setprecision(12) << " t: "
+        std::cout << "i: " << i << std::setprecision(12) << " t: "
                   << traj_states[i].getTime().seconds() <<std::setprecision(6)
-                  << "  yaw: " << yaw
-                  << std::endl;
+                  << "  yaw: " << yaw << "  relative yaw: " << (yaw - prev_yaw)
+                  << "  r_ig_g " << T_ig.r_ba_ina().transpose() << std::endl;
+        prev_yaw = yaw;
       }
 
       std::cout << "Last time was: " << std::setprecision(12) << t_n;
@@ -436,6 +438,17 @@ void CpoBackEnd::_queryCallback(const std::shared_ptr<QueryTrajectory::Request> 
     std::cout << "response->message: " << response->message
               << std::endl;  // debug
     return;
+  }
+
+  if (request->t_2 < t_end) {   // debug: interpolating so probably on update stage
+    // append latest estimate to file
+    std::ofstream outstream;
+    outstream.open("/home/ben/Desktop/query_times.csv", std::ofstream::out | std::ofstream::app);
+    outstream << t_end << "," << request->t_2 << "," << request->t_1 << "," << t_end - request->t_2;
+    std::cout << t_end << "," << request->t_2 << "," << request->t_1 << "," << t_end - request->t_2 << std::endl;
+
+    outstream << std::endl;
+    outstream.close();
   }
 
   // requested times are reasonable so let's try to estimate a transform
