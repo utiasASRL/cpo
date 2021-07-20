@@ -467,12 +467,12 @@ void CpoBackEnd::getParams() {
   this->declare_parameter("ang_acc_std_dev_x", 0.1);
   this->declare_parameter("ang_acc_std_dev_y", 0.1);
   this->declare_parameter("ang_acc_std_dev_z", 0.1);
-  this->declare_parameter("roll_cov_x", 0.001);
-  this->declare_parameter("roll_cov_y", 0.001);
-  this->declare_parameter("roll_cov_z", 0.001);
-  this->declare_parameter("roll_cov_ang1", 0.01);
-  this->declare_parameter("roll_cov_ang2", 0.01);
-  this->declare_parameter("roll_cov_ang3", 1.0);
+  this->declare_parameter("prior_cov_x", 0.001);
+  this->declare_parameter("prior_cov_y", 0.001);
+  this->declare_parameter("prior_cov_z", 0.001);
+  this->declare_parameter("prior_cov_ang1", 0.01);
+  this->declare_parameter("prior_cov_ang2", 0.01);
+  this->declare_parameter("prior_cov_ang3", 1.0);
   this->declare_parameter("window_size", 10);
   this->declare_parameter("lock_first_pose", true);
   this->declare_parameter("results_path", "~/cpo.csv");
@@ -501,12 +501,12 @@ void CpoBackEnd::getParams() {
   smoothing_factor_information_.diagonal() = 1.0 / Qc_diag;
 
   pose_prior_cov_ = Eigen::Matrix<double, 6, 6>::Identity();
-  pose_prior_cov_(0, 0) = this->get_parameter("roll_cov_x").as_double();
-  pose_prior_cov_(1, 1) = this->get_parameter("roll_cov_y").as_double();
-  pose_prior_cov_(2, 2) = this->get_parameter("roll_cov_z").as_double();
-  pose_prior_cov_(3, 3) = this->get_parameter("roll_cov_ang1").as_double();
-  pose_prior_cov_(4, 4) = this->get_parameter("roll_cov_ang2").as_double();
-  pose_prior_cov_(5, 5) = this->get_parameter("roll_cov_ang3").as_double();
+  pose_prior_cov_(0, 0) = this->get_parameter("prior_cov_x").as_double();
+  pose_prior_cov_(1, 1) = this->get_parameter("prior_cov_y").as_double();
+  pose_prior_cov_(2, 2) = this->get_parameter("prior_cov_z").as_double();
+  pose_prior_cov_(3, 3) = this->get_parameter("prior_cov_ang1").as_double();
+  pose_prior_cov_(4, 4) = this->get_parameter("prior_cov_ang2").as_double();
+  pose_prior_cov_(5, 5) = this->get_parameter("prior_cov_ang3").as_double();
 
   window_size_ = this->get_parameter("window_size").as_int();
   lock_first_pose_ = this->get_parameter("lock_first_pose").as_bool();
