@@ -11,7 +11,7 @@ cpo_back_end:
 
     use_sim_time: true
 
-    tdcp_cov: 0.01
+    tdcp_cov: 0.001
     non_holo_y: 0.01
     non_holo_z: 0.01
     non_holo_roll: 0.01
