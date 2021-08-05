@@ -1,6 +1,6 @@
 cpo_back_end:
   ros__parameters:
-    results_path: "~/CLionProjects/ros2-ws/src/cpo_analysis/data/estimates/cpo-online.csv"
+    results_path: "~/cpo-online-results.csv"
     window_size: 25                         # messages
     lock_first_pose: true
     fixed_rate_publish: false
