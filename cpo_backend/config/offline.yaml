@@ -1,13 +1,13 @@
 cpo_back_end:
   ros__parameters:
     results_path: "~/CLionProjects/ros2-ws/src/cpo_analysis/data/estimates/cpo.csv"
-    window_size: 40
+    window_size: 25                         # messages
     lock_first_pose: true
     fixed_rate_publish: false
-    publish_frequency: 4.0
-    publish_delay: 10.0              # seconds
-    traj_timeout_limit: 10.0
-    r_veh_gps_inv: [ -0.60, 0.00, -0.52 ]
+    publish_frequency: 4.0                  # Hz
+    publish_delay: 10.0                     # seconds
+    traj_timeout_limit: 10.0                # seconds
+    r_veh_gps_inv: [ -0.60, 0.00, -0.52 ]   # m
 
     use_sim_time: true
 
@@ -29,5 +29,6 @@ cpo_back_end:
     prior_cov_ang2: 0.01
     prior_cov_ang3: 1.0
 
-    solver_verbose: true
+    solver_verbose: false
+    costs_verbose: false
     solver_max_iterations: 50

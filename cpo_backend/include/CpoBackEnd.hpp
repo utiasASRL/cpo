@@ -133,6 +133,9 @@ class CpoBackEnd : public rclcpp::Node {
   /** \brief Whether to print extra information about the optimization */
   bool steam_verbose_;
 
+  /** \brief Whether to print the costs from each set of factors before/after optimizing */
+  bool costs_verbose_;
+
   /** \brief Maximum number of solver iterations per optimization */
   uint steam_max_iterations_;
 

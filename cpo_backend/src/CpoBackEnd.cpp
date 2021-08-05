@@ -244,8 +244,10 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
       problem_->addStateVariable(state);
     }
 
-    // print initial costs (for debugging/development)
-    printCosts(false);
+    if (costs_verbose_) {
+      // print initial costs (for debugging/development)
+      printCosts(false);
+    }
 
     // setup solver and optimize
     steam::DoglegGaussNewtonSolver::Params params;
@@ -278,8 +280,10 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
       return;
     }
 
-    // print final costs (for debugging/development)
-    printCosts(true);
+    if (costs_verbose_) {
+      // print final costs (for debugging/development)
+      printCosts(true);
+    }
 
     // update with optimized transforms
     for (uint i = 0; i < edges_.size(); ++i) {
@@ -297,20 +301,17 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
 
     init_pose_.reproject(true);
 
-    if (!fixed_rate_publish_) {
-      // if not publishing based on timer, we'll publish edge leaving window
-      double t_n = (double) edges_.back().msg.t_b * 1e-9;
-      double t_0 = (double) edges_.front().msg.t_a * 1e-9;
+    double t_n = (double) edges_.back().msg.t_b * 1e-9;
+    double t_0 = (double) edges_.front().msg.t_a * 1e-9;
+    std::cout << "Last message time was: " << std::setprecision(12) << t_n;
+    std::cout << "    Time at front of sliding window is: " << t_0
+              << std::setprecision(6) << std::endl;
 
-      if (edges_.size() == window_size_) {
-        // only publish if window is full
-        publishPose(init_pose_);
-        saveToFile(init_pose_, t_0);
-      }
-
-      std::cout << "Last time was: " << std::setprecision(12) << t_n;
-      std::cout << "    Time zero was: " << t_0 << std::setprecision(6)
-                << std::endl;
+    // if not publishing based on timer, we'll publish edge leaving window
+    if (!fixed_rate_publish_ && edges_.size() == window_size_) {
+      // only publish if window is full
+      publishPose(init_pose_);
+      saveToFile(init_pose_, t_0);
     }
 
     init_pose_estimated_ = true;
@@ -479,6 +480,7 @@ void CpoBackEnd::getParams() {
   this->declare_parameter("lock_first_pose", true);
   this->declare_parameter("results_path", "~/cpo.csv");
   this->declare_parameter("solver_verbose", false);
+  this->declare_parameter("costs_verbose", false);
   this->declare_parameter("solver_max_iterations", 5);
   this->declare_parameter("traj_timeout_limit", 5.0);
 
@@ -514,6 +516,7 @@ void CpoBackEnd::getParams() {
   lock_first_pose_ = this->get_parameter("lock_first_pose").as_bool();
   results_path_ = expandUser(this->get_parameter("results_path").as_string());
   steam_verbose_ = this->get_parameter("solver_verbose").as_bool();
+  costs_verbose_ = this->get_parameter("costs_verbose").as_bool();
   steam_max_iterations_ = this->get_parameter("solver_max_iterations").as_int();
   traj_timeout_limit_ = this->get_parameter("traj_timeout_limit").as_double();
 }
