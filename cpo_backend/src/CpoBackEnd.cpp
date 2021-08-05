@@ -80,10 +80,8 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
 
   addMsgToWindow(msg_in);
 
-  // don't attempt optimization if we don't have a full window
-  if (edges_.size() < window_size_)
-    return;
-
+  // currently, we only attempt optimization if we have at least 4 satellites to
+  // ensure the problem's well-defined. However, some cases will work with fewer
   if (n >= 4) {
     initializeProblem();
 
@@ -300,11 +298,15 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
     init_pose_.reproject(true);
 
     if (!fixed_rate_publish_) {
+      // if not publishing based on timer, we'll publish edge leaving window
       double t_n = (double) edges_.back().msg.t_b * 1e-9;
       double t_0 = (double) edges_.front().msg.t_a * 1e-9;
-      Transformation T_ng = statevars.back()->getValue() * init_pose_;
-      publishPose(init_pose_);
-      saveToFile(init_pose_, t_0);
+
+      if (edges_.size() == window_size_) {
+        // only publish if window is full
+        publishPose(init_pose_);
+        saveToFile(init_pose_, t_0);
+      }
 
       std::cout << "Last time was: " << std::setprecision(12) << t_n;
       std::cout << "    Time zero was: " << t_0 << std::setprecision(6)
