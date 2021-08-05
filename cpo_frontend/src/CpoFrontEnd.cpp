@@ -33,7 +33,7 @@ CpoFrontEnd::CpoFrontEnd()
       this->get_parameter("enable_tropospheric_correction").as_bool();
 
   if (!from_serial && !fs::exists(rtcm_path)) {
-    throw std::runtime_error("RTCM data file not found.");
+    throw std::runtime_error("RTCM data file not found. Check data_path parameter.");
   }
 
   if (from_serial && !fs::exists(port_path_)) {

@@ -1,17 +1,14 @@
-# The tmux session name, has to be unique
-session_name: bag-replay-cpo-2
-
-# The default start directory for the full session, ./ is this file's location
+session_name: bag-replay-cpo
 start_directory: ./../..
 
-# Can run a script before tmuxp starts building the session
+# Sources our ROS2 workspace. May need to modify for your specific file structure
 shell_command_before:
   - "source ./../install/setup.bash"
 
 # Add commands to bash history
 suppress_history: false
 
-# This is where we list all the stuff we want to run
+# Run just the backend node. TDCP msgs are received by replaying a bag of them instead of from the frontend node
 windows:
   - window_name: cpo_main
     layout: main-horizontal

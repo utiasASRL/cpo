@@ -3,14 +3,12 @@ cpo_front_end:
     from_serial: false
     log_serial: false
 
+    # if not from_serial, this gives the binary file to get the RTCM data
+    # NOTE: will likely need to replace path with your file paths
     data_path: "~/CLionProjects/ros2-ws/src/cpo_frontend/data/rtcm3/feb15c.BIN"
-
-    port_path: "/dev/ttyUSB0"
-    baud: 57600
 
     # Unix time data is from. Set to negative to use live time
     approximate_time: 1613400000       # Feb.15/21
-    # approximate_time: 1623890000       # June 16/21
     #    approximate_time: -1       # now
     use_sim_time: true
 

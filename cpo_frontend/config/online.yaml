@@ -1,13 +1,13 @@
 cpo_front_end:
   ros__parameters:
-    from_serial: true
-    log_serial: true
+    from_serial: true           # whether to expect RTCM messages over the serial port at port_path
+    log_serial: true            # whether to log serial data to binary file
 
-    data_path: "n/a"
-
-    port_path: "/dev/ttyUSB1"
+    port_path: "/dev/ttyUSB1"   # can be found by running "ls /dev/ttyU*" before and after plugging in receiver USB
     baud: 57600
 
     # Unix time data is from. Set to negative to use live time
-    approximate_time: -1       # now
+    approximate_time: -1        # now
     use_sim_time: false
+
+    enable_tropospheric_correction: true

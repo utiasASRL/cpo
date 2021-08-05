@@ -1,7 +1,7 @@
 #include <SatelliteObs.hpp>
 
 SatelliteObs::SatelliteObs(obsd_t obs, double stamp_in)
-    : observation_(obs), in_stamp_(stamp_in) {}
+    : in_stamp_(stamp_in), observation_(obs) {}
 
 void SatelliteObs::estimateTroposphericDelay(const double *satellite_pos_vel,
                                              const double *receiver_pos) {

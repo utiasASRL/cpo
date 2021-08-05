@@ -66,7 +66,7 @@ int main(int argc, char **argv) {
         }
       }
 
-      for (unsigned i = 0; i < node->rtcm.obs.n; ++i) {
+      for (unsigned i = 0; i < (unsigned)node->rtcm.obs.n; ++i) {
         obsd_t &obs = node->rtcm.obs.data[i];
 
         // check the observation is from a GPS positioning satellite

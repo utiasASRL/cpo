@@ -1,6 +1,5 @@
 #include <unistd.h>
 
-#include <iostream>
 #include <filesystem>
 
 #include <cpo_utilities.hpp>

@@ -2,7 +2,7 @@
 
 #include <rtklib.h>
 
-/* \note: this will need changing if additional leap seconds added.
+/** \note: this will need changing if additional leap seconds added.
  * Possible there is a way to consistently get this from navigation data. */
 #define LEAP_SECONDS 18
 

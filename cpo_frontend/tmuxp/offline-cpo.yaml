@@ -1,17 +1,15 @@
-# The tmux session name, has to be unique
-session_name: cpo
-
-# The default start directory for the full session, ./ is this file's location
+session_name: offline-cpo
 start_directory: ./../..
 
-# Can run a script before tmuxp starts building the session
+# Sources our ROS2 workspace. May need to modify for your specific file structure
 shell_command_before:
   - "source ./../install/setup.bash"
 
 # Add commands to bash history
 suppress_history: false
 
-# This is where we list all the stuff we want to run
+# Bring up both the frontend and backend nodes to process GPS data. The listener node plots our estimates in real time.
+# When offline, the measurement times are in the past, so we use simulated time and must run a clock server
 windows:
   - window_name: cpo_main
     layout: main-horizontal

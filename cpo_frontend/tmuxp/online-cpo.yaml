@@ -1,17 +1,15 @@
-# The tmux session name, has to be unique
-session_name: cpo
-
-# The default start directory for the full session, ./ is this file's location
+session_name: online-cpo
 start_directory: ./../..
 
-# Can run a script before tmuxp starts building the session
+# Sources our ROS2 workspace. May need to modify for your specific file structure
 shell_command_before:
   - "source ./../install/setup.bash"
 
 # Add commands to bash history
 suppress_history: false
 
-# This is where we list all the stuff we want to run
+# Bring up both the frontend and backend nodes to process GPS data. The listener node plots our estimates in real time.
+# Optionally, record the TDCP msgs being published by the frontend.
 windows:
   - window_name: cpo_main
     layout: main-horizontal
@@ -19,4 +17,4 @@ windows:
       - ros2 run cpo_backend cpo_backend --ros-args --params-file ./cpo_backend/config/online.yaml
       - ros2 run cpo_frontend cpo_frontend --ros-args --params-file ./cpo_frontend/config/online.yaml -p log_serial_filename:=serial_$(date '+%F')_$(date '+%H')_$(date '+%M')_$(date '+%S').bin
       - ros2 run cpo_analysis listener
-      - # ros2 bag record -o /home/ben/CLionProjects/ros2-ws/bagfiles/$(date '+%s') tdcp
+      - # ros2 bag record -o ~/CLionProjects/ros2-ws/bagfiles/$(date '+%s') tdcp
