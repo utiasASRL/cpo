@@ -93,6 +93,21 @@ This package contains scripts to visualize and analyze the results of CPO.
   source ~/cpo_workspace/install/setup.bash
   ```
 
+### Offline Demo
+Included in the repository is some sample GPS data that can be used to run the offline version of CPO.
+The instructions below assume you have installed the package into `~/cpo_workspace`.
+If you have chosen another directory you will need to change some paths in the parameter files.
+To get started run:
+```bash
+source ~/cpo_workspace/install/setup.bash
+cd ~/cpo_workspace/src/cpo/cpo_frontend/tmuxp
+tmuxp load offline-cpo.yaml
+```
+
+When the data has finished, use `tmux kill-session` to exit.
+You can then run `ros2 run cpo_analysis plot_file` to see the results of the CPO estimates compared to the RTK ground truth. 
+
+
 ### Receiver Setup
 
 We provide here receiver configuration instructions tested on a NovAtel SMART6-L receiver.
