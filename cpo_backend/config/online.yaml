@@ -1,9 +1,9 @@
 cpo_back_end:
   ros__parameters:
-    results_path: "~/cpo-online-results.csv"
+    results_path: "~/cpo_workspace/src/cpo/cpo_analyis/data/estimates/cpo.csv"
     window_size: 25                         # messages
     lock_first_pose: true
-    fixed_rate_publish: false
+    fixed_rate_publish: true
     publish_frequency: 4.0                  # Hz
     publish_delay: 10.0                     # seconds
     traj_timeout_limit: 10.0                # seconds
