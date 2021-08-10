@@ -59,6 +59,7 @@ This package contains scripts to visualize and analyze the results of CPO.
 - Install CPO and dependencies
   - `cpo_backend` uses [STEAM](https://github.com/utiasASRL/steam) as an engine for optimization and [lgmath](https://github.com/utiasASRL/lgmath) for handling Lie group operations.
     Following the instructions below will download and install the ROS2 versions of STEAM and lgmath.
+    The default workspace folder is `~/cpo_workspace`.
     Note: the query trajectory service currently requires the `ros2-traj-covariance` branch of STEAM.
   - The dependencies of `cpo_frontend`, [RTKLIB](https://github.com/tomojitakasu/RTKLIB) and [serial](https://github.com/cottsay/serial) are included in the `deps` folder as submodules.
   ```bash
@@ -69,27 +70,27 @@ This package contains scripts to visualize and analyze the results of CPO.
   source /opt/ros/foxy/setup.bash                             # if installed from binary packages
   source <path-to-ROS2-install>/ros_foxy/install/setup.bash   # if built from source 
   # download CPO and its dependencies
-  mkdir -p ~/<cpo_workspace>/src && cd $_
+  mkdir -p ~/cpo_workspace/src && cd $_
   git clone https://github.com/utiasASRL/lgmath.git
   cd lgmath
   git checkout ros2-dev
-  cd ~/<cpo_workspace>/src
+  cd ~/cpo_workspace/src
   git clone https://github.com/utiasASRL/steam.git
   cd steam
   git checkout ros2-traj-covariance
-  cd ~/<cpo_workspace>/src
+  cd ~/cpo_workspace/src
   git clone https://github.com/ben-congram/cpo.git
   cd cpo
   git submodule update --init --remote --recursive
   # build and install serial
-  mkdir -p ~/<cpo_workspace>/src/cpo/deps/serial/build && cd $_
+  mkdir -p ~/cpo_workspace/src/cpo/deps/serial/build && cd $_
   cmake ..
   sudo cmake --build . --target install  # will install to /usr/local/[lib,bin]
   export LD_LIBRARY_PATH=/usr/local/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}  # put this in bashrc
   # build and install ROS2 packages
-  cd ~/<cpo_workspace>
+  cd ~/cpo_workspace
   colcon build --symlink-install
-  source ~/<cpo_workspace>/install/setup.bash
+  source ~/cpo_workspace/install/setup.bash
   ```
 
 ### Receiver Setup

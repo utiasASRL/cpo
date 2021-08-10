@@ -86,9 +86,9 @@ def main():
     parser.add_argument('--dataset', '-d', type=str, help='Name of dataset to retrieve groundtruth file.',
                         default='feb15c')
     parser.add_argument('--groundtruth_dir', '-g', type=str, help='Path to directory with RTK ground truth (optional)',
-                        default='~/CLionProjects/ros2-ws/src/cpo_analysis/data/groundtruth/')
+                        default='~/cpo_workspace/src/cpo/cpo_analysis/data/groundtruth/')
     parser.add_argument('--estimates_path', '-e', type=str, help='Path to our TDCP estimates CSV file.',
-                        default='~/CLionProjects/ros2-ws/src/cpo_analysis/data/estimates/cpo.csv')
+                        default='~/cpo_workspace/src/cpo/cpo_analysis/data/estimates/cpo.csv')
     args = parser.parse_args()
 
     plt.rc('axes', labelsize=12, titlesize=14)

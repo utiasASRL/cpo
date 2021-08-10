@@ -17,4 +17,4 @@ windows:
       - ros2 run cpo_backend cpo_backend --ros-args --params-file ./cpo_backend/config/online.yaml
       - ros2 run cpo_frontend cpo_frontend --ros-args --params-file ./cpo_frontend/config/online.yaml -p log_serial_filename:=serial_$(date '+%F')_$(date '+%H')_$(date '+%M')_$(date '+%S').bin
       - ros2 run cpo_analysis listener
-      - # ros2 bag record -o ~/CLionProjects/ros2-ws/bagfiles/$(date '+%s') tdcp
+      - # ros2 bag record -o ~/cpo_workspace/bagfiles/$(date '+%s') tdcp
