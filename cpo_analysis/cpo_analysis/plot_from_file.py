@@ -171,31 +171,6 @@ def main():
     ax2[2].set_ylabel('2D Position Error (m)')
     ax2[2].set_ylim([0, 2])
 
-    # errors by time
-    plt.figure(3, figsize=[8, 3])
-    plt.plot(relative_errors[:, 0] - 1613400000, np.sqrt(relative_errors[:, 4] ** 2 + relative_errors[:, 5] ** 2),
-             c='C1')
-    ax2[0].set_title('Position Errors by Timestamp - {0}'.format(dataset))
-    plt.xlabel('Timestamp - 1613400000 (s)')
-    plt.ylabel('2D Position Error (m)')
-    plt.ylim([0, 2])
-    plt.tight_layout()
-
-    plt.figure(4)
-    tmp = []
-    for row in estimates:
-        if row[0] < 1613419716 or row[0] > 1613419897:
-            continue
-        yaw = -math.atan2(row[9], row[8])  # note: T saved off is column major
-        pitch = -math.atan2(-row[10], math.sqrt(row[14] ** 2 + row[18] ** 2))
-        roll = -math.atan2(row[14], row[18])
-        tmp.append([yaw, pitch, roll])
-    ypr = np.array(tmp)
-    plt.title("Standalone Carrier Phase Odometry")
-    plt.xlabel("Seconds")
-    plt.ylabel("Estimated Angle (rad)")
-    plt.plot(ypr[:])  # plot yaw pitch roll
-
     plt.show()
 
 
