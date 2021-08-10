@@ -52,32 +52,45 @@ This package contains scripts to visualize and analyze the results of CPO.
   - CPO requires a ROS2 installation to overlay.
     The current release was developed and tested for the Foxy distribution.
     See the [ROS website](https://docs.ros.org/en/foxy/Installation.html) for installation instructions.
+  - If you have not already installed [colcon](https://docs.ros.org/en/foxy/Tutorials/Colcon-Tutorial.html), install it with:
+  ```bash
+  sudo apt install python3-colcon-common-extensions
+  ```
 - Install CPO and dependencies
   - `cpo_backend` uses [STEAM](https://github.com/utiasASRL/steam) as an engine for optimization and [lgmath](https://github.com/utiasASRL/lgmath) for handling Lie group operations.
     Following the instructions below will download and install the ROS2 versions of STEAM and lgmath.
     Note: the query trajectory service currently requires the `ros2-traj-covariance` branch of STEAM.
   - The dependencies of `cpo_frontend`, [RTKLIB](https://github.com/tomojitakasu/RTKLIB) and [serial](https://github.com/cottsay/serial) are included in the `deps` folder as submodules.
   ```bash
-  source ~/<path-to-ROS2-install>/ros_foxy/install/setup.bash
-  mkdir -p ~/<cpo_workspace> && cd ~/<cpo_workspace>
+  # install system dependencies
+  sudo apt install git tmux tmuxp python3-pip
+  pip3 install scipy pyproj seaborn
+  # source ROS2 workspace using either...
+  source /opt/ros/foxy/setup.bash                             # if installed from binary packages
+  source <path-to-ROS2-install>/ros_foxy/install/setup.bash   # if built from source 
+  # download CPO and its dependencies
+  mkdir -p ~/<cpo_workspace>/src && cd $_
   git clone https://github.com/utiasASRL/lgmath.git
   cd lgmath
-  git checkout ros2
-  cd ~/<cpo_workspace>
+  git checkout ros2-dev
+  cd ~/<cpo_workspace>/src
   git clone https://github.com/utiasASRL/steam.git
   cd steam
   git checkout ros2-traj-covariance
-  cd ~/<cpo_workspace>
-  git clone https://github.com/ben-congram/cpo.git src
-  cd src
-  git submodule update --init --remote
+  cd ~/<cpo_workspace>/src
+  git clone https://github.com/ben-congram/cpo.git
+  cd cpo
+  git submodule update --init --remote --recursive
+  # build and install serial
+  mkdir -p ~/<cpo_workspace>/src/cpo/deps/serial/build && cd $_
+  cmake ..
+  sudo cmake --build . --target install  # will install to /usr/local/[lib,bin]
+  export LD_LIBRARY_PATH=/usr/local/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}  # put this in bashrc
+  # build and install ROS2 packages
   cd ~/<cpo_workspace>
   colcon build --symlink-install
   source ~/<cpo_workspace>/install/setup.bash
   ```
-
-
-todo - test instructions
 
 ### Receiver Setup
 
