@@ -10,6 +10,7 @@
     <buildtool_depend>ament_cmake</buildtool_depend>
 
     <depend>rclcpp</depend>
+    <depend>serial</depend>
     <depend>cpo_interfaces</depend>
 
     <export>
