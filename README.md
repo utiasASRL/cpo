@@ -106,7 +106,7 @@ tmuxp load offline-cpo.yaml
 
 When the data has finished, use `tmux kill-session` to exit.
 You can then run `ros2 run cpo_analysis plot_file` to see the results of the CPO estimates compared to the RTK ground truth. 
-
+A quick video of this demo can be seen [here](https://youtu.be/4nlUpjzyal8).
 
 ### Receiver Setup
 
