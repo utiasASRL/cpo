@@ -71,7 +71,7 @@ CpoFrontEnd::CpoFrontEnd()
     approximate_time = temp_time;
   }
 
-  rtcm.time = {.time = approximate_time};
+  rtcm.time = {.time = approximate_time, .sec = 0.0};
 
   // using GPS only for this for now
   code_positioning_options.navsys = SYS_GPS;

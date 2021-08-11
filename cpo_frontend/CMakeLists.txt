@@ -26,6 +26,7 @@ add_library(rtklib ${RTK_LIB_DIRECTORY}/src/rtkcmn.c
         ${RTK_LIB_DIRECTORY}/src/ionex.c
         ${RTK_LIB_DIRECTORY}/src/preceph.c
         )
+target_compile_options(rtklib PRIVATE -Wno-missing-field-initializers -Wno-unused-parameter -Wno-unused-but-set-variable)
 
 install(
         DIRECTORY include/
