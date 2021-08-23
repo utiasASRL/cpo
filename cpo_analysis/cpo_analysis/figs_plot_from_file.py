@@ -100,12 +100,20 @@ def main():
     plt.rc('axes', labelsize=12, titlesize=14)
     plt.rcParams["font.family"] = "serif"
 
-    datasets = ("feb10a", "feb10b", "feb10c", "feb10d",
+    datasets = ("feb10b", "feb10c", "feb10d",
                 "feb15a", "feb15c", "feb15e", "feb15f",
-                "aug61a", "aug61b", "aug61c", "aug61d")  # todo: don't actually have these files yet
+                # "feb15a_nt", "feb15c_nt", "feb15e_nt", "feb15f_nt",
+                "aug61a", "aug61b", "aug61c", "aug61d")
 
-    fig2, ax2 = plt.subplots(nrows=3, ncols=1, figsize=[8, 8])
+    base_cmaps = ['Blues', 'Greens',  'Oranges']
+    colors = np.concatenate([plt.get_cmap(name)(np.linspace(0.5, 0.8, 4)) for name in base_cmaps])
+    cmap = matplotlib.colors.ListedColormap(colors)
+
+    fig2, ax2 = plt.subplots(nrows=3, ncols=1, figsize=[12, 10])
     fig2.subplots_adjust(left=0.10, bottom=0.06, right=0.96, top=0.93)
+
+    total_length = 0
+    total_final_err = 0
 
     for i in range(len(datasets)):
         dataset = datasets[i]
@@ -115,19 +123,22 @@ def main():
             gt_dir = osp.expanduser("~/CLionProjects/ros2-ws/src/cpo_analysis/data/groundtruth/")
             gt_file = dataset + "_gga.ASC"
             day = 2144 * 7 + 3  # Feb.10/21
-            trim_start_rows = 15  # optionally can be used to trim off part before robot begins driving
+            trim_start_rows = 10  # optionally can be used to trim off part before robot begins driving
         elif dataset[:5] == "feb15":
             gt_dir = osp.expanduser("~/CLionProjects/ros2-ws/src/cpo_analysis/data/groundtruth/")
-            gt_file = dataset + "_gga.ASC"
+            gt_file = dataset[:6] + "_gga.ASC"
             day = 2145 * 7 + 1  # Feb.15/21
-            trim_start_rows = 15
+            trim_start_rows = 10
         else:
             gt_dir = osp.expanduser("~/ASRL/data/aug6/gt/")
             gt_file = dataset + ".csv"      # Aug.6/21 (navsatfix data)
             day = 0
-            trim_start_rows = 150
+            if dataset == "aug61d":
+                trim_start_rows = 900
+            else:
+                trim_start_rows = 300
 
-        estimates_path = "~/Desktop/cpo_" + dataset + ".csv"
+        estimates_path = "~/Desktop/fr-experiments/cpo_" + dataset + ".csv"
         estimates_path = osp.expanduser(estimates_path)
         estimates = np.genfromtxt(estimates_path, delimiter=',', skip_header=1 + trim_start_rows)
 
@@ -157,19 +168,35 @@ def main():
                             ])
         relative_errors = np.array(tmp)
 
-        ax2[0].plot(relative_errors[:, 7] - relative_errors[0, 7], relative_errors[:, 4], c='C0')  # x errors
-        ax2[1].plot(relative_errors[:, 7] - relative_errors[0, 7], relative_errors[:, 5], c='C0')  # y errors
+        ax2[0].plot(relative_errors[:, 7] - relative_errors[0, 7], relative_errors[:, 4], label=i+1, c=cmap(10 - i))  # x errors
+        ax2[1].plot(relative_errors[:, 7] - relative_errors[0, 7], relative_errors[:, 5], c=cmap(10 - i))  # y errors
         ax2[2].plot(relative_errors[:, 7] - relative_errors[0, 7],
-                    np.sqrt(relative_errors[:, 4] ** 2 + relative_errors[:, 5] ** 2), c='C0')  # planar errors
+                    np.sqrt(relative_errors[:, 4] ** 2 + relative_errors[:, 5] ** 2), c=cmap(10 - i))  # planar errors
+
+        # print stats
+        length = relative_errors[-1, 7] - relative_errors[0, 7]
+        final_err = np.sqrt(relative_errors[-1, 4] ** 2 + relative_errors[-1, 5] ** 2)
+        drift_rate = 100 * final_err / length
+        print("Run: {0}  Length: {1}  End Err: {2}  Drift: {3}%".format(dataset, length, final_err, drift_rate))
+
+        total_length += length
+        total_final_err += final_err
+
+    weighted_avg_drift = 100 * total_final_err / total_length
+    print("Total Length: {0} Total Final 2D Error: {1}  Drift Rate: {2}%".format(total_length, total_final_err, weighted_avg_drift))
 
     ax2[0].set_title('Position Errors wrt Ground Truth - All Runs')
     ax2[2].set_xlabel('Distance Along Path (m)')
     ax2[0].set_ylabel('x Error (m)')
-    ax2[0].set_ylim([-1.6, 1.6])
+    ax2[0].set_ylim([-1.75, 1.75])
     ax2[1].set_ylabel('y Error (m)')
-    ax2[1].set_ylim([-1.6, 1.6])
+    ax2[1].set_ylim([-1.75, 1.75])
     ax2[2].set_ylabel('2D Position Error (m)')
     ax2[2].set_ylim([0, 2])
+    ax2[0].set_xlim([-10, 410])
+    ax2[1].set_xlim([-10, 410])
+    ax2[2].set_xlim([-10, 410])
+    ax2[0].legend()
 
     plt.show()
 
