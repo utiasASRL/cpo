@@ -15,6 +15,7 @@ windows:
     panes:
       - ros2 run cpo_backend cpo_backend --ros-args --params-file ./cpo_backend/config/offline.yaml
       # - ros2 bag play ~/CLionProjects/ros2-ws/bagfiles/feb15c --rate 10
-      - ros2 bag play ~/ASRL/data/aug6/tdcp/aug62c --rate 10
+      - ros2 bag play ~/ASRL/data/feb15/tdcp/feb15f --rate 4
+#      - ros2 bag play ~/ASRL/data/aug6/tdcp/aug61d --rate 4
       - ros2 run cpo_analysis listener
       -
