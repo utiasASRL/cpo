@@ -18,6 +18,18 @@ CpoFrontEnd::CpoFrontEnd()
   this->declare_parameter("approximate_time", -1);
   this->declare_parameter("enable_tropospheric_correction", true);
 
+  this->declare_parameter("start_time", -1);
+  this->declare_parameter("end_time", -1);
+  this->declare_parameter("start_drop_time", -1);
+  this->declare_parameter("end_drop_time", -1);
+  this->declare_parameter("drop_max_sats", 0);
+
+  start_time_ = this->get_parameter("start_time").as_int();
+  end_time_ = this->get_parameter("end_time").as_int();
+  start_drop_time_ = this->get_parameter("start_drop_time").as_int();
+  end_drop_time_ = this->get_parameter("end_drop_time").as_int();
+  drop_max_sats_ = (int)this->get_parameter("drop_max_sats").as_int();
+
   port_path_ = this->get_parameter("port_path").as_string();
   baud_ = this->get_parameter("baud").as_int();
   from_serial = this->get_parameter("from_serial").as_bool();

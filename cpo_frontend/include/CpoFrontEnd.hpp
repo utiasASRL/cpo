@@ -125,6 +125,12 @@ class CpoFrontEnd : public rclcpp::Node {
   /** \brief Whether to attempt to estimate and correct for tropospheric delay to carrier phase signal */
   bool enable_tropospheric_correction;
 
+  long start_time_;    // drop times just for experiments but start and end may be good to keep
+  long end_time_;
+  long start_drop_time_;
+  long end_drop_time_;
+  int drop_max_sats_;
+
  private:
 
   /** \brief The current single-point positioning (pseudorange) estimate in the ENU frame */

@@ -7,6 +7,7 @@ import math
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
+import matplotlib.patches as patches
 from math import sqrt
 from pyproj import Proj
 import seaborn as sns
@@ -100,17 +101,24 @@ def main():
     plt.rc('axes', labelsize=12, titlesize=14)
     plt.rcParams["font.family"] = "serif"
 
-    datasets = ("feb10b", "feb10c", "feb10d",
+    datasets = (
+        # "feb15a_22", "feb10c", "feb10d",
                 "feb15a", "feb15c", "feb15e", "feb15f",
                 # "feb15a_nt", "feb15c_nt", "feb15e_nt", "feb15f_nt",
-                "aug61a", "aug61b", "aug61c", "aug61d")
+                # "aug61a", "aug61b", "aug61c", "aug61d"
+    )
 
-    base_cmaps = ['Blues', 'Greens',  'Oranges']
-    colors = np.concatenate([plt.get_cmap(name)(np.linspace(0.5, 0.8, 4)) for name in base_cmaps])
+    datasets = ("feb15a_22", "feb15a_22dl", "feb15c", "feb15c_22dl",
+                "feb15e", "feb15e_22dl", "feb15f", "feb15f_22dl")
+
+    label = ["4 Full", "4 Limited", "5 Full", "5 Limited", "6 Full", "6 Limited", "7 Full", "7 Limited"]
+
+    base_cmaps = ['Blues', 'Greens',  'Oranges', 'Purples']
+    colors = np.concatenate([plt.get_cmap(name)(np.linspace(0.5, 0.9, 2)) for name in base_cmaps])
     cmap = matplotlib.colors.ListedColormap(colors)
 
-    fig2, ax2 = plt.subplots(nrows=3, ncols=1, figsize=[12, 10])
-    fig2.subplots_adjust(left=0.10, bottom=0.06, right=0.96, top=0.93)
+    fig2, ax2 = plt.subplots(nrows=1, ncols=1, figsize=[12, 5])
+    fig2.subplots_adjust(left=0.06, bottom=0.10, right=0.96, top=0.93)
 
     total_length = 0
     total_final_err = 0
@@ -139,6 +147,8 @@ def main():
                 trim_start_rows = 300
 
         estimates_path = "~/Desktop/fr-experiments/cpo/cpo_" + dataset + ".csv"
+        estimates_path = "/home/ben/Desktop/fr-exp-22/cpo_test/cpo_" + dataset + ".csv"
+
         estimates_path = osp.expanduser(estimates_path)
         estimates = np.genfromtxt(estimates_path, delimiter=',', skip_header=1 + trim_start_rows)
 
@@ -168,10 +178,8 @@ def main():
                             ])
         relative_errors = np.array(tmp)
 
-        ax2[0].plot(relative_errors[:, 7] - relative_errors[0, 7], relative_errors[:, 4], label=i+1, c=cmap(10 - i))  # x errors
-        ax2[1].plot(relative_errors[:, 7] - relative_errors[0, 7], relative_errors[:, 5], c=cmap(10 - i))  # y errors
-        ax2[2].plot(relative_errors[:, 7] - relative_errors[0, 7],
-                    np.sqrt(relative_errors[:, 4] ** 2 + relative_errors[:, 5] ** 2), c=cmap(10 - i))  # planar errors
+        ax2.plot(relative_errors[:, 7] - relative_errors[0, 7],
+                    np.sqrt(relative_errors[:, 4] ** 2 + relative_errors[:, 5] ** 2), c=cmap(i), label=label[i])  # planar errors
 
         # print stats
         length = relative_errors[-1, 7] - relative_errors[0, 7]
@@ -185,18 +193,16 @@ def main():
     weighted_avg_drift = 100 * total_final_err / total_length
     print("Total Length: {0} Total Final 2D Error: {1}  Drift Rate: {2}%".format(total_length, total_final_err, weighted_avg_drift))
 
-    ax2[0].set_title('Position Errors wrt Ground Truth - All Runs')
-    ax2[2].set_xlabel('Distance Along Path (m)')
-    ax2[0].set_ylabel('x Error (m)')
-    ax2[0].set_ylim([-1.75, 1.75])
-    ax2[1].set_ylabel('y Error (m)')
-    ax2[1].set_ylim([-1.75, 1.75])
-    ax2[2].set_ylabel('2D Position Error (m)')
-    ax2[2].set_ylim([0, 2])
-    ax2[0].set_xlim([-10, 410])
-    ax2[1].set_xlim([-10, 410])
-    ax2[2].set_xlim([-10, 410])
-    ax2[0].legend()
+    ax2.set_title('Position Errors wrt Ground Truth - Limited Satellites')
+    ax2.set_xlabel('Distance Along Path (m)')
+    ax2.set_ylabel('2D Position Error (m)')
+    ax2.set_ylim([0, 4])
+    ax2.set_xlim([-10, 410])
+    rect = patches.Rectangle((50, 0), 50, 5, edgecolor='none', facecolor=(0, 0, 0, 0.25))
+
+# Add the patch to the Axes
+    ax2.add_patch(rect)
+    ax2.legend()
 
     plt.show()
 

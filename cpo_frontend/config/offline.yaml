@@ -15,3 +15,16 @@ cpo_front_end:
     use_sim_time: true
 
     enable_tropospheric_correction: true
+
+    # DROPOUT EXPERIMENTS...
+#    start_time: 1613417000
+#    end_time: 1613417270
+#    start_drop_time: 1613417122   # feb15a
+#    end_drop_time: 1613417177
+#    start_drop_time: 1613419680   # feb15c
+#    end_drop_time: 1613419735
+#    start_drop_time: 1613424673   # feb15e
+#    end_drop_time: 1613424728
+#    start_drop_time: 1613425927   # feb15f
+#    end_drop_time: 1613425982
+#    drop_max_sats: 3

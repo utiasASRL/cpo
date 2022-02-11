@@ -50,6 +50,12 @@ int main(int argc, char **argv) {
                   << std::endl;
       }
 
+      // check that time is between start time and end time parameters (if in use)
+      if (node->start_time_ > 0 && (node->rtcm.obs.data->time.time < node->start_time_ || node->rtcm.obs.data->time.time > node->end_time_)) {
+        printf("Skipping record %10ld. Outside of time range.\n", node->rtcm.obs.data->time.time);
+        continue;
+      }
+
       if (node->use_sim_time) {
         // if using simulated time, check that msg times in the ballpark
         auto diff = (long) node->get_clock()->now().seconds()
@@ -64,6 +70,12 @@ int main(int argc, char **argv) {
                     << " seconds ahead of simulated time. Check sim_time started at correct value."
                     << std::endl;
         }
+      }
+
+      //  partial/full dropout feature
+      if (node->start_drop_time_ > 0 && node->rtcm.obs.data->time.time > node->start_drop_time_ && node->rtcm.obs.data->time.time < node->end_drop_time_) {
+        printf("Dropout seen at %10ld. \n", node->rtcm.obs.data->time.time);
+        node->rtcm.obs.n = node->drop_max_sats_;
       }
 
       for (unsigned i = 0; i < (unsigned)node->rtcm.obs.n; ++i) {
@@ -118,7 +130,10 @@ int main(int argc, char **argv) {
         }
 
         // check that we have at least 2 satellite matches so we can create a double-difference
-        if (matches.size() < 2) continue;
+        if (matches.size() < 2) {
+          node->stepForward();
+          continue;
+        }
 
         // if we have gotten this far, we plan on publishing a message
         cpo_interfaces::msg::TDCP meas_msg;

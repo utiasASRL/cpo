@@ -82,7 +82,7 @@ void CpoBackEnd::_tdcpCallback(const cpo_interfaces::msg::TDCP::SharedPtr msg_in
 
   // currently, we only attempt optimization if we have at least 4 satellites to
   // ensure the problem's well-defined. However, some cases will work with fewer
-  if (n >= 4) {
+  if (n >= 1) {             // temporary for limited satellite availability experiments. not fully tested
     initializeProblem();
 
     // set up steam problem
