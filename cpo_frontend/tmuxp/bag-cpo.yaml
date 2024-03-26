@@ -3,7 +3,7 @@ start_directory: ./../..
 
 # Sources our ROS2 workspace. May need to modify for your specific file structure
 shell_command_before:
-  - "source ./../install/setup.bash"
+  - "source ./../../install/setup.bash"
 
 # Add commands to bash history
 suppress_history: false
